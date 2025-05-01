@@ -20,6 +20,7 @@ class _OnDemandPageState extends State<OnDemandPage> {
  // List<Episode> _displayedEpisodes = [];
   int itemsToLoad = 10;
   bool isLoadingMore = false;
+  bool _showBackToTop = false;
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -28,8 +29,20 @@ class _OnDemandPageState extends State<OnDemandPage> {
     onDemandFuture = OnDemand.create();
     selectedFilter = filters[0];
     _scrollController.addListener(() {
-      if (_scrollController.position.pixels ==
-              _scrollController.position.maxScrollExtent &&
+      // This logic determines whether or not to show the "back to top" button
+      final bool shouldShow = _scrollController.offset > 100;
+      // Only call setState if the state needs to change
+        if (shouldShow != _showBackToTop) {
+          setState(() {
+            _showBackToTop = shouldShow;
+          });
+        }
+
+      // If we are 200 pixels from the bottom, start loading more if were not already
+      // I find this makes the UX much better than if we have to get to the very bottom to start loading, and has minimal performance cost
+      // ^ very rarely does the user even see the loading icon, scrolling at a reasonable speed 
+      if (_scrollController.position.pixels >=
+              _scrollController.position.maxScrollExtent - 200  &&
           !isLoadingMore) {
         _loadMoreEpisodes();
       }
@@ -38,7 +51,7 @@ class _OnDemandPageState extends State<OnDemandPage> {
 
   void _loadMoreEpisodes() {
     setState(() {
-      isLoadingMore = true;
+        isLoadingMore = true;
     });
 
     Future.delayed(const Duration(milliseconds: 100), () {
@@ -57,7 +70,8 @@ class _OnDemandPageState extends State<OnDemandPage> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
+    return
+        FutureBuilder(
       future: onDemandFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -78,9 +92,22 @@ class _OnDemandPageState extends State<OnDemandPage> {
                   .where((episode) => episode.podcastName == selectedFilter)
                   .toList();
 
-          return Column(children: [
+          return Scaffold(
+            floatingActionButton: _showBackToTop
+                ? FloatingActionButton(
+                    onPressed: () {
+                      _scrollController.animateTo(
+                        0,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    child: const Icon(Icons.arrow_upward),
+                  )
+                : null,
+            body: Column(children: [
             DropdownButton<String>(
-              value: selectedFilter,// Set the current value
+              value: selectedFilter, // Set the current value
               items: filters.map<DropdownMenuItem<String>>((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
@@ -117,18 +144,19 @@ class _OnDemandPageState extends State<OnDemandPage> {
                     podcastEpisodeName: show.episodeName,
                     podcastEpisodeDate: show.episodeDate,
                     podcastEpisodeStreamUrl: show.episodeStreamUrl,
-                    duration: show.duration, 
+                    duration: show.duration,
                   );
                 },
               ),
             )
-          ]);
+          ]));
         }
       },
     );
   }
 }
 
+// Defines view for a single show in the list
 class _OnDemandListTile extends StatelessWidget {
   // ignore: use_super_parameters
   const _OnDemandListTile({
