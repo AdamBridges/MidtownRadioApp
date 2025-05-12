@@ -200,8 +200,9 @@ class _EpisodeListTile extends StatelessWidget {
             child: InkWell(
               // ontap - set url and start playin'
               onTap: episode.episodeStreamUrl.isNotEmpty ? () {
-                //debugPrint("url: ${episode.episodeStreamUrl}");
-                audioPlayerHandler.setStream(
+                debugPrint("url: ${episode.episodeStreamUrl}");
+                
+                audioPlayerHandler.customSetStream(
                    MediaItem(
                     id: episode.episodeStreamUrl,
                     title: episode.episodeName,

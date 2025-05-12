@@ -37,6 +37,7 @@ class MidtownRadioStateful extends StatefulWidget {
 
 class MidtownRadioState extends State<MidtownRadioStateful> {
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey();
+  final ValueNotifier<bool> isModalOpen = ValueNotifier<bool>(false);
 
   @override
   Widget build(BuildContext context) {
@@ -49,26 +50,36 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
             builder: (context, child) => Scaffold(
                 body: child,
                 // Changed to nav bar so that body contents don't end up behind it
-                bottomNavigationBar: StreamBuilder<MediaItem?>(
-                stream: audioHandler.mediaItem,
-                builder: (context, mediaSnapshot) {
-                  final mediaItem = mediaSnapshot.data;
-                  return StreamBuilder<PlaybackState>(
-                    stream: audioHandler.playbackState,
-                    builder: (context, stateSnapshot) {
-                      final playbackState = stateSnapshot.data;
-                      final processingState = playbackState?.processingState
-                          ?? AudioProcessingState.idle;
+                bottomNavigationBar: ValueListenableBuilder<bool>(
+  valueListenable: isModalOpen,
+  builder: (context, modalOpen, _) {
+    if (modalOpen) return const SizedBox.shrink();
+    return StreamBuilder<MediaItem?>(
+      stream: audioHandler.mediaItem,
+      builder: (context, mediaSnapshot) {
+        final mediaItem = mediaSnapshot.data;
+        return StreamBuilder<PlaybackState>(
+          stream: audioHandler.playbackState,
+          builder: (context, stateSnapshot) {
+            final playbackState = stateSnapshot.data;
+            final processingState = playbackState?.processingState ??
+                AudioProcessingState.idle;
 
-                      final showPlayer = mediaItem != null
-                          && processingState != AudioProcessingState.idle;
+            final showPlayer = mediaItem != null &&
+                processingState != AudioProcessingState.idle;
 
-                      if (!showPlayer) return const SizedBox.shrink();
-                      return PlayerWidget(navigatorKey: navigatorKey);
-                    },
-                  );
-                },
-              ),
+            if (!showPlayer) return const SizedBox.shrink();
+            return PlayerWidget(
+              navigatorKey: navigatorKey,
+              isModalOpen: isModalOpen,
+            );
+          },
+        );
+      },
+    );
+  },
+),
+
 
             ),
 

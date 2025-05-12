@@ -22,7 +22,7 @@ class ListenLivePage extends StatelessWidget {
               return ElevatedButton(
                 onPressed: () => audioPlayerHandler.isPlaying
                     ? audioPlayerHandler.stop()
-                    : audioPlayerHandler.setStream(
+                    : audioPlayerHandler.customSetStream(
                         MediaItem(
                           id: 'https://midtownradiokw.out.airtime.pro/midtownradiokw_a',
                           title: 'Midtown Radio KW',
