@@ -3,36 +3,29 @@ import 'package:dart_rss/dart_rss.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart'; // For debugPrint
 
-// Consider adding html_unescape if you encounter many HTML entities like &amp;, &lt;, etc.
-// import 'package:html_unescape/html_unescape.dart';
-
-// Utility to strip HTML tags
+// utility to strip HTML tags -- this could use a second look over
 String _stripHtmlIfNeeded(String? htmlText) {
   if (htmlText == null || htmlText.isEmpty) {
     return '';
   }
-  // Regex to remove HTML tags.
+  // regex to remove HTML tags.
   final RegExp htmlRegExp = RegExp(r"<[^>]*>", multiLine: true, caseSensitive: false);
   String strippedText = htmlText.replaceAll(htmlRegExp, '');
 
-  // Optional: Decode HTML entities if you add the html_unescape package
-  // var unescape = HtmlUnescape();
-  // strippedText = unescape.convert(strippedText);
-
+  // I havent encountered these -- I think we can expect the HTML to be non-malicious, but maybe more sanitation could be done just in case
   // Replace common HTML entities manually if not using a package
-  strippedText = strippedText.replaceAll('&nbsp;', ' ');
-  strippedText = strippedText.replaceAll('&amp;', '&');
-  strippedText = strippedText.replaceAll('&lt;', '<');
-  strippedText = strippedText.replaceAll('&gt;', '>');
-  strippedText = strippedText.replaceAll('&quot;', '"');
-  strippedText = strippedText.replaceAll('&#39;', "'");
-  // Add more entities as needed
+  // strippedText = strippedText.replaceAll('&nbsp;', ' ');
+  // strippedText = strippedText.replaceAll('&amp;', '&');
+  // strippedText = strippedText.replaceAll('&lt;', '<');
+  // strippedText = strippedText.replaceAll('&gt;', '>');
+  // strippedText = strippedText.replaceAll('&quot;', '"');
+  // strippedText = strippedText.replaceAll('&#39;', "'");
 
   return strippedText.trim();
 }
 
-
-// Represents a single Podcast Show/Series
+/// represents a single podcast show/series 
+/// - *NOT any specific episode (see [Episode])
 class PodcastShow {
   final String title;
   final String? description;
@@ -40,7 +33,7 @@ class PodcastShow {
   final String? publishDate;
   final DateTime? sortablePublishDate;
   final List<Episode> episodes;
-  final String feedUrl; // Unique identifier for Hero animation
+  final String feedUrl;
 
   PodcastShow({
     required this.title,
@@ -53,17 +46,18 @@ class PodcastShow {
   });
 }
 
+// a single episode for a show
 class Episode {
   final String guid;
   final String podcastName;
-  final String podcastImageUrl; // Show's image, as fallback
-  final String? episodeSpecificImageUrl; // Episode's own image
+  final String podcastImageUrl; 
+  final String? episodeSpecificImageUrl; 
   final String episodeName;
   final String? episodeDescription;
   final String episodeStreamUrl;
   final String episodeDateForDisplay;
   final DateTime? episodeDateForSorting;
-  final String? duration; // e.g., "HH:MM:SS" or total seconds as string
+  final String? duration; 
 
   Episode({
     required this.guid,
@@ -127,8 +121,9 @@ class OnDemand {
     }
   }
 
-
+  // gets shows from RSS
   Future<void> _fetchShows() async {
+    // get streams from fallback and from list of streams on GitHub
     final List<String> streamUrls = await _Streams.getStreams();
     shows.clear();
 
@@ -190,7 +185,7 @@ class OnDemand {
             publishDate: channelPubDateString,
             sortablePublishDate: channelSortablePubDate,
             episodes: currentShowEpisodes,
-            feedUrl: url, // Use feedUrl as a unique ID for Hero
+            feedUrl: url, // Uses feedUrl as a unique ID for Hero
           ));
         } else {
           debugPrint('Failed to load RSS feed ($url): ${response.statusCode}');
@@ -212,9 +207,10 @@ class OnDemand {
   }
 }
 
-class _Streams { // Keep your _Streams class as is
-  static const String feedsUrl =
-      'https://raw.githubusercontent.com/CivicTechWR/MidtownRadioApp/cw-dynamic-feeds/assets/tempfeeds.txt';
+class _Streams {
+  // this is where we fetch any extra feeds from 
+  static const String feedsUrl = 'https://raw.githubusercontent.com/CivicTechWR/MidtownRadioApp/cw-dynamic-feeds/assets/tempfeeds.txt';
+  
   static const List<String> _fallback = [
     'https://feeds.transistor.fm/midtown-radio',
     'https://feeds.transistor.fm/on-the-scene',
@@ -224,7 +220,8 @@ class _Streams { // Keep your _Streams class as is
 
   static Future<List<String>> getStreams() async {
     try {
-      debugPrint("Fetching remote RSS feed URLs from $feedsUrl...");
+      //debugPrint("Fetching remote RSS feed URLs from $feedsUrl...");
+      // fetch any new feeds not already in the app
       final resp = await http.get(Uri.parse(feedsUrl));
       if (resp.statusCode == 200) {
         final List<String> remote = resp.body
@@ -233,6 +230,7 @@ class _Streams { // Keep your _Streams class as is
             .where((l) => l.isNotEmpty && l.startsWith('http'))
             .toList();
 
+        // take union of fallback and fetched
         if (remote.isNotEmpty) {
             final remoteSet = Set<String>.from(remote);
             final mergedStreams = List<String>.from(remote);
@@ -241,7 +239,7 @@ class _Streams { // Keep your _Streams class as is
                     mergedStreams.add(fallbackUrl);
                 }
             }
-            debugPrint("Successfully fetched and merged ${mergedStreams.length} feed URLs.");
+            //debugPrint("Successfully fetched and merged ${mergedStreams.length} feed URLs.");
             return mergedStreams;
         } else {
             debugPrint("Remote feed URL list was empty. Using fallback: ${_fallback.length} URLs.");
