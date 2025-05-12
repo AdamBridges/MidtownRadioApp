@@ -26,7 +26,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
   }
 
 setStream(MediaItem item) {
-  debugPrint("Attempting to load URL: ${item.id} for title: ${item.title}");
+  //debugPrint("Attempting to load URL: ${item.id} for title: ${item.title}");
   _isLoading = true;
   mediaItem.add(item);
   // Ensure you're updating your UI to reflect loading state
@@ -41,23 +41,18 @@ setStream(MediaItem item) {
     playbackState.add(playbackState.value.copyWith(
       processingState: AudioProcessingState.ready,
     ));
-    debugPrint("URL loaded successfully: ${item.id}");
+    //debugPrint("URL loaded successfully: ${item.id}");
     play(); // Call play after successful loading
   }).catchError((error, stackTrace) { // Catch the error
-    debugPrint("!!!!!!!!!! ERROR LOADING URL ${item.id} !!!!!!!!!!");
-    debugPrint("Error: $error");
-    debugPrint("StackTrace: $stackTrace"); // This can be very helpful
-    _isCurrentlyPlaying = "Error: Could not load audio.";
+    _isCurrentlyPlaying = "Error: Could not load audio; Check internet.";
     _isLoading = false;
     _isPlaying = false;
     playbackState.add(playbackState.value.copyWith(
       processingState: AudioProcessingState.error,
       playing: false,
     ));
-    // Optionally call stop() or other reset logic
-    // stop();
+
   });
-  // debugPrint("this should be workin'"); // This line executes before setUrl completes
 }
 
   @override

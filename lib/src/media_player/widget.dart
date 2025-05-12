@@ -38,7 +38,7 @@ class PlayerWidget extends StatelessWidget {
       child: Row(
         children: [
           // play/pause button
-          snapshot.data?.processingState == AudioProcessingState.buffering
+          (snapshot.data?.processingState == AudioProcessingState.buffering || audioPlayerHandler.isLoading)
               ? const Padding(
                   padding: EdgeInsets.all(8.0),
                   child: SizedBox(

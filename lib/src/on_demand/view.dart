@@ -1,5 +1,5 @@
 import 'package:audio_service/audio_service.dart';
-import 'package:ctwr_midtown_radio_app/main.dart'; // Assuming audioHandler is here
+import 'package:ctwr_midtown_radio_app/main.dart';
 import 'package:flutter/material.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/controller.dart';
 import 'package:intl/intl.dart';
@@ -41,9 +41,12 @@ class _OnDemandPageState extends State<OnDemandPage> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return Center( /* ... error handling ... */ );
+            return Center(child: Text("An unexpected error has occured. Please try again later."));
           } else if (!snapshot.hasData || snapshot.data!.shows.isEmpty) {
-            return const Center(child: Text('No shows available.'));
+            return Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: const Center(child: Text('No shows available. \nPlease ensure you are connected to the internet.', textAlign: TextAlign.center,)),
+            );
           } else {
             final List<PodcastShow> shows = snapshot.data!.shows;
             return ListView.builder(
