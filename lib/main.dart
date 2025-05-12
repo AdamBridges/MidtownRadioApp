@@ -26,6 +26,7 @@ void main() async {
       androidStopForegroundOnPause: true,
       androidNotificationIcon: 'mipmap/launcher_icon'
     ),
+    
   );
   
   // Load settings

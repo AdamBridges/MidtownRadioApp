@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_service/audio_service.dart';
 
@@ -24,20 +25,40 @@ class AudioPlayerHandler extends BaseAudioHandler {
         processingState: AudioProcessingState.loading));
   }
 
-  setStream(MediaItem item) {
-    _isLoading = true;
-    mediaItem.add(item);
-    _player.setUrl(item.id)
-      // .then((_) {
-      //   _player.
-      // })
-      .then((_) {
-      _isCurrentlyPlaying = item.title;
-      playbackState.add(playbackState.value
-          .copyWith(processingState: AudioProcessingState.ready, ));
-    });
-    play();
-  }
+setStream(MediaItem item) {
+  debugPrint("Attempting to load URL: ${item.id} for title: ${item.title}");
+  _isLoading = true;
+  mediaItem.add(item);
+  // Ensure you're updating your UI to reflect loading state
+  _isCurrentlyPlaying = "Loading: ${item.title}";
+  playbackState.add(playbackState.value.copyWith(
+    processingState: AudioProcessingState.loading,
+  ));
+
+  _player.setUrl(item.id).then((_) {
+    _isCurrentlyPlaying = item.title;
+    _isLoading = false;
+    playbackState.add(playbackState.value.copyWith(
+      processingState: AudioProcessingState.ready,
+    ));
+    debugPrint("URL loaded successfully: ${item.id}");
+    play(); // Call play after successful loading
+  }).catchError((error, stackTrace) { // Catch the error
+    debugPrint("!!!!!!!!!! ERROR LOADING URL ${item.id} !!!!!!!!!!");
+    debugPrint("Error: $error");
+    debugPrint("StackTrace: $stackTrace"); // This can be very helpful
+    _isCurrentlyPlaying = "Error: Could not load audio.";
+    _isLoading = false;
+    _isPlaying = false;
+    playbackState.add(playbackState.value.copyWith(
+      processingState: AudioProcessingState.error,
+      playing: false,
+    ));
+    // Optionally call stop() or other reset logic
+    // stop();
+  });
+  // debugPrint("this should be workin'"); // This line executes before setUrl completes
+}
 
   @override
   Future<void> play() async {

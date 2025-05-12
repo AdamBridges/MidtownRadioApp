@@ -48,13 +48,28 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
             builder: (context, child) => Scaffold(
                 body: child,
                 // Changed to nav bar so that body contents don't end up behind it
-                bottomNavigationBar: StreamBuilder<PlaybackState>(
+                bottomNavigationBar: StreamBuilder<MediaItem?>(
+                stream: audioHandler.mediaItem,
+                builder: (context, mediaSnapshot) {
+                  final mediaItem = mediaSnapshot.data;
+                  return StreamBuilder<PlaybackState>(
                     stream: audioHandler.playbackState,
-                    builder: (context, snapshot) {
-                      return (audioPlayerHandler.isPlaying)
-                          ? PlayerWidget(navigatorKey: navigatorKey)
-                          : const SizedBox.shrink();
-                    })),
+                    builder: (context, stateSnapshot) {
+                      final playbackState = stateSnapshot.data;
+                      final processingState = playbackState?.processingState
+                          ?? AudioProcessingState.idle;
+
+                      final showPlayer = mediaItem != null
+                          && processingState != AudioProcessingState.idle;
+
+                      if (!showPlayer) return const SizedBox.shrink();
+                      return PlayerWidget(navigatorKey: navigatorKey);
+                    },
+                  );
+                },
+              ),
+
+            ),
 
             initialRoute: HomePage.routeName,
 
