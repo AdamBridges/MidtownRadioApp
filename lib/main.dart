@@ -37,5 +37,5 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
   
-  runApp(MidtownRadioApp(settingsController: settingsController));
+  runApp(MidtownRadioApp(settingsController: settingsController,));
 }

@@ -23,23 +23,27 @@ class OnDemand {
       for (var url in streams) {
         final response = await http.get(Uri.parse(url));
         if (response.statusCode == 200) {
-
           final feed = RssFeed.parse(response.body);
           final podcastName = feed.title ?? 'Untitled Podcast';
-            final imageUrl = feed.image?.url ??
-                (feed.itunes?.image?.href ??
-                    'assets/images/logo_mic_black_on_white.png');
-            if (!_imageCache.containsKey(podcastName) && imageUrl.startsWith('http')) {
-              final imageResponse = await http.get(Uri.parse(imageUrl));
-              if (imageResponse.statusCode == 200) {
-                _imageCache[podcastName] = imageResponse.bodyBytes;
-              }
+          final imageUrl = feed.image?.url ??
+              (feed.itunes?.image?.href ??
+                  'assets/images/logo_mic_black_on_white.png');
+
+          if (!_imageCache.containsKey(podcastName) &&
+              imageUrl.startsWith('http')) {
+            final imageResponse = await http.get(Uri.parse(imageUrl));
+            if (imageResponse.statusCode == 200) {
+              _imageCache[podcastName] = imageResponse.bodyBytes;
             }
+          }
 
           for (var item in feed.items) {
             if (_episodeExists(item.guid ?? '')) {
               continue;
             }
+
+           final formattedDuration = _formatDuration(item.itunes?.duration);
+
             final episode = Episode(
               guid: item.guid ?? 'No GUID Provided',
               podcastName: podcastName,
@@ -58,6 +62,7 @@ class OnDemand {
                       DateFormat("EEE, dd MMM yyyy HH:mm:ss Z")
                           .parse(item.pubDate!, true))
                   : 'No date available',
+              duration: formattedDuration,
             );
             episodes.add(episode);
           }
@@ -71,12 +76,38 @@ class OnDemand {
         (a, b) => DateTime.parse(b.episodeSortDate)
             .compareTo(DateTime.parse(a.episodeSortDate)),
       );
-    } catch (e) {
-      // print('Error fetching RSS feed: $e');
+    } catch (e) { // print('Error fetching RSS feed: $e');
       throw Exception('Error fetching RSS feed.');
     }
   }
-  
+
+  Duration? _parseDuration(String? raw) {
+    if (raw == null) return null;
+
+    try {
+      final parts = raw.split(':').map(int.parse).toList();
+      if (parts.length == 3) {
+        return Duration(hours: parts[0], minutes: parts[1], seconds: parts[2]);
+      } else if (parts.length == 2) {
+        return Duration(minutes: parts[0], seconds: parts[1]);
+      } else if (parts.length == 1) {
+        return Duration(seconds: parts[0]);
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
+  String _formatDuration(Duration? duration) {
+    if (duration == null) return 'No duration available';
+
+    final hours = duration.inHours.toString().padLeft(2, '0');
+    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+
+    return '$hours:$minutes:$seconds';
+  }
+
   Uint8List? getCachedImage(String podcastName) {
     return _imageCache[podcastName];
   }
@@ -113,16 +144,19 @@ class Episode {
   final String episodeDate;
   final String episodeSortDate;
   final String guid;
+  final String duration;
 
-  Episode(
-      {required this.guid,
-      required this.podcastName,
-      required this.podcastImageUrl,
-      required this.episodeName,
-      required this.episodeDescription,
-      required this.episodeStreamUrl,
-      required this.episodeDate,
-      required this.episodeSortDate});
+  Episode({
+    required this.guid,
+    required this.podcastName,
+    required this.podcastImageUrl,
+    required this.episodeName,
+    required this.episodeDescription,
+    required this.episodeStreamUrl,
+    required this.episodeDate,
+    required this.episodeSortDate,
+    required this.duration,
+  });
 }
 
 class _Streams {

@@ -26,7 +26,6 @@ class ProgressBar extends StatelessWidget {
       stream: _positionDataStream,
       builder: (context, snapshot) {
         final data = snapshot.data;
-
         if (data == null || data.isLive) {
           return const Padding(
             padding: EdgeInsets.only(top: 4.0),
@@ -36,6 +35,7 @@ class ProgressBar extends StatelessWidget {
                 fontSize: 12.0,
                 color: Colors.red,
                 fontWeight: FontWeight.bold,
+                decoration: TextDecoration.none,
               ),
             ),
           );

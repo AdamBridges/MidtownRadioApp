@@ -32,6 +32,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
       //   _player.
       // })
       .then((_) {
+      _player.seek(Duration.zero);
       _isCurrentlyPlaying = item.title;
       playbackState.add(playbackState.value
           .copyWith(processingState: AudioProcessingState.ready, ));

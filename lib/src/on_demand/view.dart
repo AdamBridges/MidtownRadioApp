@@ -17,8 +17,7 @@ class _OnDemandPageState extends State<OnDemandPage> {
 
   List<String> filters = ['All'];
   late String selectedFilter;
-
-  // List<Episode> _displayedEpisodes = [];
+ // List<Episode> _displayedEpisodes = [];
   int itemsToLoad = 10;
   bool isLoadingMore = false;
   final ScrollController _scrollController = ScrollController();
@@ -39,9 +38,7 @@ class _OnDemandPageState extends State<OnDemandPage> {
 
   void _loadMoreEpisodes() {
     setState(() {
-      (() {
-        isLoadingMore = true;
-      });
+      isLoadingMore = true;
     });
 
     Future.delayed(const Duration(milliseconds: 100), () {
@@ -60,10 +57,7 @@ class _OnDemandPageState extends State<OnDemandPage> {
 
   @override
   Widget build(BuildContext context) {
-    return
-        // Column(
-        //   children: [
-        FutureBuilder(
+    return FutureBuilder(
       future: onDemandFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -86,7 +80,7 @@ class _OnDemandPageState extends State<OnDemandPage> {
 
           return Column(children: [
             DropdownButton<String>(
-              value: selectedFilter, // Set the current value
+              value: selectedFilter,// Set the current value
               items: filters.map<DropdownMenuItem<String>>((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
@@ -123,6 +117,7 @@ class _OnDemandPageState extends State<OnDemandPage> {
                     podcastEpisodeName: show.episodeName,
                     podcastEpisodeDate: show.episodeDate,
                     podcastEpisodeStreamUrl: show.episodeStreamUrl,
+                    duration: show.duration, 
                   );
                 },
               ),
@@ -143,6 +138,7 @@ class _OnDemandListTile extends StatelessWidget {
     required this.podcastEpisodeName,
     required this.podcastEpisodeDate,
     required this.podcastEpisodeStreamUrl,
+    required this.duration,
   }) : super(key: key);
 
   final String podcastName;
@@ -150,24 +146,37 @@ class _OnDemandListTile extends StatelessWidget {
   final String podcastEpisodeName;
   final String podcastEpisodeDate;
   final String podcastEpisodeStreamUrl;
+  final String duration;
+
+  Duration _parseDuration(String duration) {
+    final parts = duration.split(':').map(int.parse).toList();
+    if (parts.length == 3) {
+      return Duration(hours: parts[0], minutes: parts[1], seconds: parts[2]);
+    } else if (parts.length == 2) {
+      return Duration(minutes: parts[0], seconds: parts[1]);
+    } else if (parts.length == 1) {
+      return Duration(seconds: parts[0]);
+    } else {
+      return Duration.zero;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<MediaItem?>(
-        stream: audioHandler.mediaItem, // Listen to the current media item
-        builder: (context, snapshot) {
-          final currentMediaItem = snapshot.data;
-          final isSelected = currentMediaItem?.id == podcastEpisodeStreamUrl;
+      stream: audioHandler.mediaItem,// Listen to the current media item
+      builder: (context, snapshot) {
+        final currentMediaItem = snapshot.data;
+        final isSelected = currentMediaItem?.id == podcastEpisodeStreamUrl;
 
-          return ListTile(
-              leading: Image.network(
-                  podcastImageUrl), // cachedImage != null ? Image.memory(cachedImage) : Image.network(podcastImageUrl),
+        return Column(
+          children: [
+            ListTile(
+              leading: Image.network(podcastImageUrl),// cachedImage != null ? Image.memory(cachedImage) : Image.network(podcastImageUrl),
               title: Text(
                 podcastEpisodeName,
                 maxLines: 1,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -180,14 +189,17 @@ class _OnDemandListTile extends StatelessWidget {
               selectedTileColor: Theme.of(context).highlightColor,
               onTap: () => audioPlayerHandler.setStream(
                 MediaItem(
-                  id: podcastEpisodeStreamUrl, 
+                  id: podcastEpisodeStreamUrl,
                   title: podcastEpisodeName,
                   album: podcastName,
                   artUri: Uri.parse(podcastImageUrl),
-                  )
-                )
-              );
-      }
+                  duration: _parseDuration(duration),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
