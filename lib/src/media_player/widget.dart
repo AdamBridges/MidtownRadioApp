@@ -1,45 +1,47 @@
 // lib/src/media_player/widget.dart
 import 'package:ctwr_midtown_radio_app/main.dart';
+import 'package:ctwr_midtown_radio_app/src/media_player/audio_player_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:audio_service/audio_service.dart';
-import 'package:ctwr_midtown_radio_app/src/media_player/fullscreen_player_modal.dart'; // Import the new modal
+import 'package:ctwr_midtown_radio_app/src/media_player/fullscreen_player_modal.dart';
+// Removed: import 'package:marquee/marquee.dart'; // No longer needed
 
-class PlayerWidget extends StatelessWidget {
+class PlayerWidget extends StatefulWidget {
   final GlobalKey<NavigatorState> navigatorKey;
   final ValueNotifier<bool> isModalOpen;
 
+  // static const double _horizontalSwipeThreshold = 75.0; // Min horizontal distance for a swipe
+  // static const double _minSwipeVelocity = 200.0;      // Min velocity for a swipe
+
   const PlayerWidget({
     super.key,
-    required this.navigatorKey, // Keep the key if you use it elsewhere, but not needed for this fix
+    required this.navigatorKey,
     required this.isModalOpen,
   });
 
+  @override
+  State<PlayerWidget> createState() => _PlayerWidgetState();
+}
+
+class _PlayerWidgetState extends State<PlayerWidget> {
   void _showFullScreenPlayer(BuildContext context) async {
-    // Make sure there's a media item to display before showing the modal
+    // ... (no changes to _showFullScreenPlayer method)
     if (audioHandler.mediaItem.value == null) return;
-    isModalOpen.value = true;
+    widget.isModalOpen.value = true;
 
     await showModalBottomSheet(
-      
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(20.0), // Adjust radius as you like
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
       ),
-      
-      barrierColor: Theme.of(context).scaffoldBackgroundColor,
-      context: context,
-      useRootNavigator: true, 
+      barrierColor: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.5),
+      context: widget.navigatorKey.currentContext!,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (BuildContext builderContext) {
-
-        // Note: Use builderContext provided by the builder here, NOT the original context.
         return ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20.0)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20.0)),
           child: DraggableScrollableSheet(
-            
-          
             initialChildSize: 0.92,
             minChildSize: 0.5,
             maxChildSize: 0.92,
@@ -51,8 +53,7 @@ class PlayerWidget extends StatelessWidget {
         );
       },
     );
-
-    isModalOpen.value = false;
+    widget.isModalOpen.value = false;
   }
 
   @override
@@ -64,34 +65,71 @@ class PlayerWidget extends StatelessWidget {
     return StreamBuilder<MediaItem?>(
       stream: audioHandler.mediaItem,
       builder: (context, mediaItemSnapshot) {
-        final bool hasMedia = mediaItemSnapshot.data != null;
+        //debugPrint("built ${mediaItemSnapshot.toString()}");
+        final mediaItem = mediaItemSnapshot.data;
+        final bool hasMedia = mediaItem != null;
 
-        // *** Use the context from the StreamBuilder here ***
+        // Differentiate between live and on-demand for UI and different controls
+        final bool isLiveStream = mediaItem?.isLive == true;
+        // For display in bottom bar:
+        // Primary: "Artist - Title" or just "Title" (from ICY for live, or regular for on-demand)
+        // Secondary: "Session Name" (for live from ICY) or "Album Name" (for on-demand)
+        
+        String primaryDisplay = mediaItem?.title ?? "Nothing is loaded...";
+        if (mediaItem?.artist?.isNotEmpty == true) {
+          primaryDisplay = "${mediaItem!.artist} - ${mediaItem.title}";
+        }
+
+        String secondaryDisplay = "";
+        if (isLiveStream) {
+          secondaryDisplay = (mediaItem?.extras?['icySession'] as String?)?.isNotEmpty == true
+              ? mediaItem!.extras!['icySession']
+              : (mediaItem?.genre?.isNotEmpty == true ? mediaItem!.genre! : "LIVE");
+        } else {
+          secondaryDisplay = mediaItem?.album?.isNotEmpty == true ? mediaItem!.album! : "On Demand";
+        }
+        // SHOWING ON DEMAND EVEN WHEN LIVE?? 
+
 
         return GestureDetector(
-          
-          // *** Pass the validContext to the tap handler ***
-          onTap: hasMedia ? () => _showFullScreenPlayer(navigatorKey.currentContext!) : null,
+          onTap: hasMedia ? () => _showFullScreenPlayer(widget.navigatorKey.currentContext!) : null,
+          // --- Add Horizontal Drag for Next/Previous ---
+          // onHorizontalDragEnd: !isLiveStream && hasMedia
+          //     ? (details) {
+          //         final currentPlaybackState = audioHandler.playbackState.value; // Get current playback state
+          //         if (details.primaryVelocity != null && details.primaryVelocity!.abs() > _minSwipeVelocity) {
+          //           // Check actual displacement as well to avoid accidental mini-drags
+          //           // This check might be too simple; velocity is often better.
+          //           // Let's rely mainly on velocity direction and magnitude for now.
+
+          //           if (details.primaryVelocity! < -_minSwipeVelocity) { // Swiped Left (towards next)
+          //             final bool canSkipNext = currentPlaybackState.controls.any((control) => control == MediaControl.skipToNext);
+          //             if (canSkipNext) {
+          //               audioHandler.skipToNext();
+          //             }
+          //           } else if (details.primaryVelocity! > _minSwipeVelocity) { // Swiped Right (towards previous)
+          //             final bool canSkipPrevious = currentPlaybackState.controls.any((control) => control == MediaControl.skipToPrevious);
+          //             if (canSkipPrevious) {
+          //               audioHandler.skipToPrevious();
+          //             }
+          //           }
+          //         }
+          //       }
+          //     : null,
           child: StreamBuilder<PlaybackState>(
             stream: audioHandler.playbackState,
-            builder: (context, snapshot) { // This inner context is also valid
-              final playbackState = snapshot.data;
+            builder: (context, playbackStateSnapshot) {
+              final playbackState = playbackStateSnapshot.data;
               final isPlaying = playbackState?.playing ?? false;
               final isLoading = (playbackState?.processingState == AudioProcessingState.loading ||
-                                 playbackState?.processingState == AudioProcessingState.buffering) ||
-                                 audioPlayerHandler.isLoading;
-
-              final String currentTitle = mediaItemSnapshot.data?.title ?? audioPlayerHandler.isCurrentlyPlaying;
+                                 playbackState?.processingState == AudioProcessingState.buffering);
 
               return Container(
                 padding: EdgeInsets.only(
-                  top: 8.0,
-                  left: 8.0,
-                  right: 8.0,
+                  top: 8.0, left: 8.0, right: 8.0,
                   bottom: safePadding > 0 ? safePadding : 8.0,
                 ),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
                   color: theme.cardColor,
                   border: Border(top: BorderSide(color: theme.dividerColor)),
                 ),
@@ -99,25 +137,15 @@ class PlayerWidget extends StatelessWidget {
                   children: [
                     (isLoading)
                         ? const Padding(
-                            padding: EdgeInsets.all(12.0),
-                            child: SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.0,
-                              ),
-                            ),
-                          )
+                          padding: EdgeInsets.all(8),
+                          child: CircularProgressIndicator(),
+                        )
                         : IconButton(
                             iconSize: 28,
-                            icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
+                            icon: Icon(isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded),
                             onPressed: () {
-                              if (currentTitle.isNotEmpty && currentTitle != "Nothing is loaded...") {
-                                if (isPlaying) {
-                                  audioHandler.pause();
-                                } else {
-                                  audioHandler.play();
-                                }
+                              if (primaryDisplay.isNotEmpty && primaryDisplay != "Nothing is loaded...") {
+                                if (isPlaying) audioHandler.pause(); else audioHandler.play();
                               }
                             },
                           ),
@@ -127,15 +155,21 @@ class PlayerWidget extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            "Now Playing:",
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontSize: 11,
-                              color: theme.textTheme.bodySmall?.color?.withOpacity(0.7)
+                          // Secondary display line (Session/Album/LIVE)
+                          if (secondaryDisplay.isNotEmpty)
+                            Text(
+                              secondaryDisplay,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontSize: 11,
+                                color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
+                          // Primary display line (Artist - Title or Title)
+                          // No Marquee - use ellipsis for overflow
                           Text(
-                            currentTitle,
+                            primaryDisplay,
                             style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
@@ -143,6 +177,11 @@ class PlayerWidget extends StatelessWidget {
                         ],
                       ),
                     ),
+                    // Optional: Visual cue for swiping if not live
+                    if (!isLiveStream && (playbackState?.controls.any((c) => c == MediaControl.skipToNext || c == MediaControl.skipToPrevious) ?? false))
+                        Icon(Icons.swap_horiz_rounded, color: theme.iconTheme.color?.withOpacity(0.4), size: 22)
+                    else
+                        const SizedBox(width:22), // Maintain space
                     const SizedBox(width: 8),
                   ],
                 ),
@@ -150,7 +189,7 @@ class PlayerWidget extends StatelessWidget {
             },
           ),
         );
-      }
+      },
     );
   }
 }

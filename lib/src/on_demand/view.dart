@@ -5,6 +5,38 @@ import 'package:ctwr_midtown_radio_app/src/on_demand/controller.dart';
 import 'package:intl/intl.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/episode_list.dart';
 
+// for some reason midtown conversations with redoutput in a living room gives an error:
+/*
+[ERROR:flutter/runtime/dart_vm_initializer.cc(40)] Unhandled Exception: Bad state: Cannot fire new event. Controller is already firing an event
+#0      _BroadcastStreamController.add (dart:async/broadcast_stream_controller.dart:256:24)
+#1      Subject._add (package:rxdart/src/subjects/subject.dart:151:17)
+#2      Subject.add (package:rxdart/src/subjects/subject.dart:141:5)
+#3      AudioPlayer.stop (package:just_audio/just_audio.dart:1167:25)
+#4      AudioPlayerHandler.stop (package:ctwr_midtown_radio_app/src/media_player/audio_player_handler.dart:323:19)
+#5      new AudioPlayerHandler.<anonymous closure> (package:ctwr_midtown_radio_app/src/media_player/audio_player_handler.dart:34:11)
+#6      _RootZone.runUnaryGuarded (dart:async/zone.dart:1778:10)
+#7      _BufferingStreamSubscription._sendData (dart:async/stream_impl.dart:381:11)
+#8      _BufferingStreamSubscription._add (dart:async/stream_impl.dart:312:7)
+#9      _MultiStreamController.addSync (dart:async/stream_impl.dart:1194:36)
+#10     _MultiCon<…>
+flutter: AudioPlayerHandler: ICY Metadata received: 'null'
+flutter: url: https://media.transistor.fm/972d7812/239aae75.mp3
+flutter: AudioPlayerHandler: ICY Metadata received: 'null'
+[ERROR:flutter/runtime/dart_vm_initializer.cc(40)] Unhandled Exception: Bad state: Cannot fire new event. Controller is already firing an event
+#0      _BroadcastStreamController.add (dart:async/broadcast_stream_controller.dart:256:24)
+#1      Subject._add (package:rxdart/src/subjects/subject.dart:151:17)
+#2      Subject.add (package:rxdart/src/subjects/subject.dart:141:5)
+#3      AudioPlayer.stop (package:just_audio/just_audio.dart:1167:25)
+#4      AudioPlayerHandler.stop (package:ctwr_midtown_radio_app/src/media_player/audio_player_handler.dart:323:19)
+#5      new AudioPlayerHandler.<anonymous closure> (package:ctwr_midtown_radio_app/src/media_player/audio_player_handler.dart:34:11)
+#6      _RootZone.runUnaryGuarded (dart:async/zone.dart:1778:10)
+#7      _BufferingStreamSubscription._sendData (dart:async/stream_impl.dart:381:11)
+#8      _BufferingStreamSubscription._add (dart:async/stream_impl.dart:312:7)
+#9      _MultiStreamController.addSync (dart:async/stream_impl.dart:1194:36)
+#10     _MultiCon<…>
+flutter: AudioPlayerHandler: ICY Metadata received: 'null'
+*/
+
 // This page displays list of podcasts, for user to click and see list of episodes per podcast
 /// The list of episodes has been moved to [EpisodeListPage]
 class OnDemandPage extends StatefulWidget {

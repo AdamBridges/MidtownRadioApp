@@ -220,7 +220,7 @@ class _Streams {
 
   static Future<List<String>> getStreams() async {
     try {
-      //debugPrint("Fetching remote RSS feed URLs from $feedsUrl...");
+      debugPrint("Fetching remote RSS feed URLs from $feedsUrl...");
       // fetch any new feeds not already in the app
       final resp = await http.get(Uri.parse(feedsUrl));
       if (resp.statusCode == 200) {
@@ -229,9 +229,12 @@ class _Streams {
             .map((l) => l.trim())
             .where((l) => l.isNotEmpty && l.startsWith('http'))
             .toList();
+      debugPrint("Done fetching remote");
+
 
         // take union of fallback and fetched
         if (remote.isNotEmpty) {
+
             final remoteSet = Set<String>.from(remote);
             final mergedStreams = List<String>.from(remote);
             for (var fallbackUrl in _fallback) {

@@ -23,12 +23,12 @@ class ListenLivePage extends StatelessWidget {
                 onPressed: () => audioPlayerHandler.isPlaying
                     ? audioPlayerHandler.stop()
                     : audioPlayerHandler.customSetStream(
-                        MediaItem(
-                          id: 'https://midtownradiokw.out.airtime.pro/midtownradiokw_a',
-                          title: 'Midtown Radio KW',
-                          isLive: true,
-                        ))
-                ,
+                      MediaItem(
+                        id: 'https://midtownradiokw.out.airtime.pro/midtownradiokw_a',
+                        title: 'Midtown Radio KW',
+                        isLive: true,
+                      )
+                    ),
                 child:
                     Icon(playing ? Icons.pause : Icons.play_arrow, size: 100),
               );
