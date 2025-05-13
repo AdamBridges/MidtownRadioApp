@@ -44,56 +44,52 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
       builder: (BuildContext context, Widget? child) {
         return MaterialApp(
           navigatorKey: navigatorKey,
-
           builder: (context, child) {
-            return Stack(
-              children: [
-                Scaffold(
-                  body: child,
+            return Overlay(
+              initialEntries: [
+                OverlayEntry(
+                  builder: (context) => Scaffold(
+                    body: child,
+                  ),
                 ),
-                StreamBuilder<PlaybackState>(
-                  stream: audioHandler.playbackState,
-                  builder: (context, snapshot) {
-                    if (!audioPlayerHandler.isPlaying) {
-                      return const SizedBox.shrink();
-                    }
-
-                    return Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: PlayerWidget(
-                        navigatorKey: navigatorKey,
-                        audioPlayerHandler: audioPlayerHandler,
-                      ),
-                    );
-                  },
+                OverlayEntry(
+                  builder: (context) => StreamBuilder<MediaItem?>(
+                    stream: audioHandler.mediaItem,
+                    builder: (context, snapshot) {
+                      if (snapshot.data == null) {
+                        return const SizedBox.shrink();
+                      }
+                      return Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: PlayerWidget(
+                          navigatorKey: navigatorKey,
+                          audioPlayerHandler: audioPlayerHandler,
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ],
             );
           },
-
           initialRoute: HomePage.routeName,
-
           localizationsDelegates: const [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-
           supportedLocales: const [
             Locale('en', ''),
             Locale('fr', ''),
           ],
-
           onGenerateTitle: (BuildContext context) =>
               AppLocalizations.of(context)!.appTitle,
-
           theme: ThemeData(),
           darkTheme: ThemeData.dark(),
           themeMode: widget.settingsController.themeMode,
-
           onGenerateRoute: (RouteSettings routeSettings) {
             return MaterialPageRoute<void>(
               settings: routeSettings,

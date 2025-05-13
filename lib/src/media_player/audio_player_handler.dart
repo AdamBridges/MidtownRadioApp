@@ -70,4 +70,9 @@ class AudioPlayerHandler extends BaseAudioHandler {
       processingState: AudioProcessingState.idle
     ));
   }
+    @override
+  Future<void> seek(Duration position) async {
+    await _player.seek(position);
+  }
+    Stream<Duration> get positionStream => _player.positionStream;
 }

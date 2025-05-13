@@ -6,27 +6,35 @@ import 'package:ctwr_midtown_radio_app/main.dart';
 class ProgressBar extends StatelessWidget {
   const ProgressBar({super.key});
 
-  Stream<_PositionData> get _positionDataStream =>
-      Rx.combineLatest3<MediaItem?, Duration, PlaybackState, _PositionData>(
+  Stream<_PositionData?> get _positionDataStream =>
+      Rx.combineLatest3<MediaItem?, Duration, PlaybackState, _PositionData?>(
         audioHandler.mediaItem,
-        AudioService.position,
+        audioPlayerHandler.positionStream,
         audioHandler.playbackState,
-        (mediaItem, position, playbackState) => _PositionData(
-          mediaItem: mediaItem,
-          position: position,
-          isLive: mediaItem?.extras?['isLive'] == true || mediaItem?.duration == null,
-        ),
+        (mediaItem, position, playbackState) {
+          if (mediaItem == null) return null;
+          return _PositionData(
+            mediaItem: mediaItem,
+            position: position,
+            isLive: mediaItem.extras?['isLive'] == true || mediaItem.duration == null,
+          );
+        },
       );
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return StreamBuilder<_PositionData>(
+    return StreamBuilder<_PositionData?>(
       stream: _positionDataStream,
       builder: (context, snapshot) {
         final data = snapshot.data;
-        if (data == null || data.isLive) {
+
+        if (data == null) {
+          return const SizedBox.shrink();
+        }
+
+        if (data.isLive) {
           return const Padding(
             padding: EdgeInsets.only(top: 4.0),
             child: Text(
@@ -41,17 +49,29 @@ class ProgressBar extends StatelessWidget {
           );
         }
 
-        final duration = data.mediaItem?.duration ?? Duration.zero;
+        final duration = data.mediaItem.duration ?? Duration.zero;
         final position = data.position;
 
-        return Padding(
-          padding: const EdgeInsets.only(top: 4.0),
-          child: LinearProgressIndicator(
-            minHeight: 8,
-            value: (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0),
-            backgroundColor: Colors.grey[300],
-            color: theme.primaryColor,
-          ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Material(
+                child: Slider(
+                  min: 0.0,
+                  max: duration.inMilliseconds.toDouble(),
+                  value: position.inMilliseconds.clamp(0, duration.inMilliseconds).toDouble(),
+                  onChanged: (value) {
+                    final newPosition = Duration(milliseconds: value.toInt());
+                    audioHandler.seek(newPosition);
+                  },
+                  activeColor: theme.primaryColor,
+                  inactiveColor: Colors.grey[300],
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -59,7 +79,7 @@ class ProgressBar extends StatelessWidget {
 }
 
 class _PositionData {
-  final MediaItem? mediaItem;
+  final MediaItem mediaItem;
   final Duration position;
   final bool isLive;
 
