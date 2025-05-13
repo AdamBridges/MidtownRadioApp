@@ -4,7 +4,6 @@ import 'package:ctwr_midtown_radio_app/src/media_player/audio_player_handler.dar
 import 'package:flutter/material.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:ctwr_midtown_radio_app/src/media_player/fullscreen_player_modal.dart';
-// Removed: import 'package:marquee/marquee.dart'; // No longer needed
 
 class PlayerWidget extends StatefulWidget {
   final GlobalKey<NavigatorState> navigatorKey;
@@ -25,7 +24,6 @@ class PlayerWidget extends StatefulWidget {
 
 class _PlayerWidgetState extends State<PlayerWidget> {
   void _showFullScreenPlayer(BuildContext context) async {
-    // ... (no changes to _showFullScreenPlayer method)
     if (audioHandler.mediaItem.value == null) return;
     widget.isModalOpen.value = true;
 
@@ -33,7 +31,7 @@ class _PlayerWidgetState extends State<PlayerWidget> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
       ),
-      barrierColor: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.5),
+      barrierColor: Colors.black.withAlpha(200),
       context: widget.navigatorKey.currentContext!,
       useRootNavigator: true,
       isScrollControlled: true,
