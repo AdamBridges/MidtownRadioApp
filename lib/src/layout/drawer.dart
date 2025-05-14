@@ -11,16 +11,23 @@ class MainAppDrawer extends StatelessWidget {
       child: ListView(
         padding: EdgeInsets.zero,
         children: <Widget>[
-          const DrawerHeader(
+          DrawerHeader(
             decoration: BoxDecoration(
-              color: Colors.blue,
+              //color: Colors.black,
             ),
-            child: Text(
-              'Midtown Radio',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
+            child: Center(
+              child: Image.asset('assets/images/logo_main.png',
+                fit: BoxFit.cover,
+                //height: 55,
               ),
+              // child: Text(
+              //   'Midtown Radio',
+              //   style: TextStyle(
+              //     color: (Theme.of(context).brightness == Brightness.dark) ? Color.fromRGBO(23, 204, 204, 1):Color(0xff00989d),
+              //     fontSize: 24,
+              //     fontWeight: FontWeight.w900
+              //   ),
+              // ),
             ),
           ),
           ListTile(

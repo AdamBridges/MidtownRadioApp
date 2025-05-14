@@ -243,19 +243,23 @@ class _EpisodeListTile extends StatelessWidget {
                           const SizedBox(height: 5),
                           Row(
                             children: [
-                              Icon(Icons.calendar_today_outlined, size: 12, color: Colors.grey[700]),
+                              Icon(
+                                Icons.calendar_today_outlined, 
+                                size: 12, 
+                                color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850]
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 episode.episodeDateForDisplay,
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[700], fontSize: 11.5),
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850], fontSize: 11.5),
                               ),
                               if (episode.duration != null && episode.duration!.isNotEmpty) ...[
-                                const Text(" • ", style: TextStyle(color: Colors.grey, fontSize: 11.5)),
-                                Icon(Icons.timer_outlined, size: 12, color: Colors.grey[700]),
+                                Text(" • ", style: TextStyle(color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850], fontSize: 11.5)),
+                                Icon(Icons.timer_outlined, size: 12, color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850]),
                                 const SizedBox(width: 4),
                                 Text(
                                   episode.duration!,
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[700], fontSize: 11.5),
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850], fontSize: 11.5),
                                 ),
                               ]
                             ],
@@ -299,7 +303,7 @@ class _EpisodeListTile extends StatelessWidget {
                     episode.episodeDescription!,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12.5, color: Colors.black87),
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
                 if (episode.episodeStreamUrl.isEmpty)
