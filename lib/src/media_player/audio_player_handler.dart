@@ -8,7 +8,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
   // for On-Demand Media, we queue up next song in the podcast so use can click "next"
   List<MediaItem> _queue = [];
   int _currentIndex = -1;
-
+  
   // Here we add a bunch of listeners to the _player to broadcast loading, metadata changes to the rest of the app
   AudioPlayerHandler() {
 
@@ -347,28 +347,50 @@ class AudioPlayerHandler extends BaseAudioHandler {
     }
   }
   
-  Future<void> customSetStream(MediaItem newItem) async {
-    await setMediaItem(newItem, playWhenReady: true);
+  Future<void> customSetStream(MediaItem newItem, {bool playWhenReady = true}) async {
+    await setMediaItem(newItem, playWhenReady: playWhenReady);
   }
 
   @override
   Future<void> play() async {
-    // handle play command, especially if coming from notification or headset
-    if (!_player.playing) {
-      if (_currentIndex != -1 && _currentIndex < _queue.length) {
-        // if there's a queued item (live or on-demand)
-        if (_player.audioSource != null) {
-          await _player.play();
-        } else {
-          // if player was stopped and source is null, reload current item
-          await _playItemAtIndex(_currentIndex, playWhenReady: true);
-        }
-      } else if (mediaItem.value != null) {
-        // if no queue context but a single media item was set (e.g. live stream directly)
+    if (_player.playing) return;
+
+    // Fallback to existing play logic for on-demand, or if live stream wasn't prepared
+    debugPrint("AudioPlayerHandler: Standard play call.");
+    if (_currentIndex != -1 && _currentIndex < _queue.length) {
+      if (_player.audioSource != null) {
         await _player.play();
+      } else {
+        // If player was stopped and source is null, _playItemAtIndex will set it and play
+        await _playItemAtIndex(_currentIndex, playWhenReady: true);
       }
+    } else if (mediaItem.value != null) {
+      // If no queue context but a single media item was set
+      if (_player.audioSource == null || (_player.audioSource?.sequence.first.tag as UriAudioSource?)?.uri.toString() != mediaItem.value!.id) {
+          // If current source is not what mediaItem says, or no source, set it and play
+          await setMediaItem(mediaItem.value!, playWhenReady: true);
+      } else {
+          await _player.play(); // Source is already set
+      }
+    } else {
+      debugPrint("AudioPlayerHandler: Play called but no media item to play.");
     }
+    
   }
+
+  //   if (_currentIndex != -1 && _currentIndex < _queue.length) {
+  //     // if there's a queued item (live or on-demand)
+  //     if (_player.audioSource != null) {
+  //       await _player.play();
+  //     } else {
+  //       // if player was stopped and source is null, reload current item
+  //       await _playItemAtIndex(_currentIndex, playWhenReady: true);
+  //     }
+  //   } else if (mediaItem.value != null) {
+  //     // if no queue context but a single media item was set (e.g. live stream directly)
+  //     await _player.play();
+  //   }
+  // }
 
   @override
   Future<void> pause() async {
