@@ -105,22 +105,32 @@ class AudioPlayerHandler extends BaseAudioHandler {
       if (base.isLive != true) return;
 
       // parse ICY metadata
-      var session = '';
-      var artist  = '';
-      var title   = '';
+      String session = '';
+      String artist  = '';
+      String title   = '';
 
-      final parts = rawMetaData.split(' - ');
+      // I noticed sometimes it just is "Airtime - offline" if theres not metadata
+      // In this case, I think its nicer to show Midtown Radio KW"
+      // this is the default, if not ICY data is given to Airtime in this case, I would rather show "Midtwon Radio KW" than "Airtime - offline"
+      if (rawMetaData.trim().toLowerCase() == 'Airtime - offline'){
+        session = "radio haha";
+        artist = "";
+        title = "Midtown Radio KW";
 
-      // We typically always have 3
-      if (parts.length == 3) {
-        session = parts[0].trim();
-        artist = parts[1].trim();
-        title = parts[2].trim();
-      } else if (parts.length == 2) {
-        artist = parts[0].trim();
-        title = parts[1].trim();
+      // If we DO actually have data that is not the defualt: 
+      } else {
+        final parts = rawMetaData.split(' - ');
+        // We typically always have 3 parts 'session - artist - song, but this can handle 2 also
+        if (parts.length == 3) {
+          session = parts[0].trim();
+          artist = parts[1].trim();
+          title = parts[2].trim();
+        } else if (parts.length == 2) {
+          artist = parts[0].trim();
+          title = parts[1].trim();
+        }
       }
-
+      
       // only rebuild if something changed
       if (title != base.title || artist != base.artist || session != base.genre) {
         // update with new Metadata - we update the fields and also provider raw ICY in "extras"
