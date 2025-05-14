@@ -29,10 +29,10 @@ class PlayerWidget extends StatelessWidget {
           alignment: Alignment.bottomCenter,
           child: Container(
             padding: EdgeInsets.only(
-              top: 8.0,
+              top: 15.0,
               left: 8.0,
               right: 8.0,
-              bottom: safePadding + 30,
+              // bottom: 8.0, //safePadding, // + 30,
             ),
             decoration: BoxDecoration(
               color: theme.cardColor,
