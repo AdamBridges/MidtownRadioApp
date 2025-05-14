@@ -27,7 +27,10 @@ class MidtownRadioApp extends StatelessWidget {
 }
 
 class MidtownRadioStateful extends StatefulWidget {
-  const MidtownRadioStateful({super.key, required this.settingsController});
+  const MidtownRadioStateful({
+    Key? key,
+    required this.settingsController
+  }): super(key: key);
 
   final SettingsController settingsController;
 
@@ -83,46 +86,45 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
 
             initialRoute: HomePage.routeName,
 
-            localizationsDelegates: const [
-              AppLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
 
-            supportedLocales: const [
-              Locale('en', ''),
-              Locale('fr', ''),
-            ],
+          supportedLocales: const [
+            Locale('en', ''),
+            Locale('fr', ''),
+          ],
 
-            onGenerateTitle: (BuildContext context) =>
-                AppLocalizations.of(context)!.appTitle,
+          onGenerateTitle: (BuildContext context) =>  AppLocalizations.of(context)!.appTitle,
 
-            theme: ThemeData(),
-            darkTheme: ThemeData.dark(),
-            themeMode: widget.settingsController.themeMode,
+          theme: ThemeData(),
+          darkTheme: ThemeData.dark(),
+          themeMode: widget.settingsController.themeMode,
 
-            onGenerateRoute: (RouteSettings routeSettings) {
-              return MaterialPageRoute<void>(
-                  settings: routeSettings,
-                  builder: (BuildContext context) {
-                    switch (routeSettings.name) {
-                      case HomePage.routeName:
-                        return const HomePage();
-                      case ListenLivePage.routeName:
-                        return const ListenLivePage();
-                      case OnDemandPage.routeName:
-                        return const OnDemandPage();
-                      case SettingsPage.routeName:
-                        return SettingsPage(
-                          controller: widget.settingsController,
-                        );
-                      default:
-                        return const ErrorPage();
-                    }
-                  });
-            },
-          );
-        });
+          onGenerateRoute: (RouteSettings routeSettings) {
+            return MaterialPageRoute<void>(
+              settings: routeSettings,
+              builder: (BuildContext context) {
+                switch (routeSettings.name) {
+                  case HomePage.routeName:
+                    return const HomePage();
+                  case ListenLivePage.routeName:
+                    return const ListenLivePage();
+                  case OnDemandPage.routeName:
+                    return const OnDemandPage();
+                  case SettingsPage.routeName:
+                    return SettingsPage(controller: widget.settingsController,);
+                  default:
+                    return const ErrorPage();
+                }
+              }
+            );
+          },
+        );
+      }
+      );
   }
 }

@@ -5,10 +5,12 @@
 import 'package:ctwr_midtown_radio_app/src/on_demand/controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:audio_service/audio_service.dart';
 import 'package:ctwr_midtown_radio_app/src/app.dart';
 import 'package:ctwr_midtown_radio_app/src/settings/controller.dart';
 import 'package:ctwr_midtown_radio_app/src/settings/service.dart';
+
+import 'package:audio_service/audio_service.dart';
+
 import 'package:ctwr_midtown_radio_app/src/media_player/audio_player_handler.dart';
 
 // Initiate singleton for app access to system audio controls
@@ -46,4 +48,5 @@ void main() async {
   ]);
   
   runApp(MidtownRadioApp(settingsController: settingsController));
+
 }
