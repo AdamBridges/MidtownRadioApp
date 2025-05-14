@@ -40,63 +40,79 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-        listenable: widget.settingsController,
-        builder: (BuildContext context, Widget? child) {
-          return MaterialApp(
-            navigatorKey: navigatorKey,
-
-            builder: (context, child) => Scaffold(
-                body: child,
-                bottomSheet: StreamBuilder<PlaybackState>(
-                    stream: audioHandler.playbackState,
+      listenable: widget.settingsController,
+      builder: (BuildContext context, Widget? child) {
+        return MaterialApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) {
+            return Overlay(
+              initialEntries: [
+                OverlayEntry(
+                  builder: (context) => Scaffold(
+                    body: child,
+                  ),
+                ),
+                OverlayEntry(
+                  builder: (context) => StreamBuilder<MediaItem?>(
+                    stream: audioHandler.mediaItem,
                     builder: (context, snapshot) {
-                      return (audioPlayerHandler.isPlaying)
-                          ? PlayerWidget(navigatorKey: navigatorKey)
-                          : const SizedBox.shrink();
-                    })),
-
-            initialRoute: HomePage.routeName,
-
-            localizationsDelegates: const [
-              AppLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-
-            supportedLocales: const [
-              Locale('en', ''),
-              Locale('fr', ''),
-            ],
-
-            onGenerateTitle: (BuildContext context) =>
-                AppLocalizations.of(context)!.appTitle,
-
-            theme: ThemeData(),
-            darkTheme: ThemeData.dark(),
-            themeMode: widget.settingsController.themeMode,
-
-            onGenerateRoute: (RouteSettings routeSettings) {
-              return MaterialPageRoute<void>(
-                  settings: routeSettings,
-                  builder: (BuildContext context) {
-                    switch (routeSettings.name) {
-                      case HomePage.routeName:
-                        return const HomePage();
-                      case ListenLivePage.routeName:
-                        return const ListenLivePage();
-                      case OnDemandPage.routeName:
-                        return const OnDemandPage();
-                      case SettingsPage.routeName:
-                        return SettingsPage(
-                          controller: widget.settingsController,
-                        );
-                      default:
-                        return const ErrorPage();
-                    }
-                  });
-            },
-          );
-        });
+                      if (snapshot.data == null) {
+                        return const SizedBox.shrink();
+                      }
+                      return Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: PlayerWidget(
+                          navigatorKey: navigatorKey,
+                          audioPlayerHandler: audioPlayerHandler,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+          initialRoute: HomePage.routeName,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [
+            Locale('en', ''),
+            Locale('fr', ''),
+          ],
+          onGenerateTitle: (BuildContext context) =>
+              AppLocalizations.of(context)!.appTitle,
+          theme: ThemeData(),
+          darkTheme: ThemeData.dark(),
+          themeMode: widget.settingsController.themeMode,
+          onGenerateRoute: (RouteSettings routeSettings) {
+            return MaterialPageRoute<void>(
+              settings: routeSettings,
+              builder: (BuildContext context) {
+                switch (routeSettings.name) {
+                  case HomePage.routeName:
+                    return const HomePage();
+                  case ListenLivePage.routeName:
+                    return const ListenLivePage();
+                  case OnDemandPage.routeName:
+                    return const OnDemandPage();
+                  case SettingsPage.routeName:
+                    return SettingsPage(
+                      controller: widget.settingsController,
+                    );
+                  default:
+                    return const ErrorPage();
+                }
+              },
+            );
+          },
+        );
+      },
+    );
   }
 }

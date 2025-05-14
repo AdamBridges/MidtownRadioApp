@@ -32,6 +32,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
       //   _player.
       // })
       .then((_) {
+      _player.seek(Duration.zero);
       _isCurrentlyPlaying = item.title;
       playbackState.add(playbackState.value
           .copyWith(processingState: AudioProcessingState.ready, ));
@@ -69,4 +70,9 @@ class AudioPlayerHandler extends BaseAudioHandler {
       processingState: AudioProcessingState.idle
     ));
   }
+    @override
+  Future<void> seek(Duration position) async {
+    await _player.seek(position);
+  }
+    Stream<Duration> get positionStream => _player.positionStream;
 }
