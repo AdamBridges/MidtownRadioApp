@@ -2,6 +2,7 @@
 // ^ this does not work for some reason on the app, despite working on my browser
 // I have no idea why - I tried to figure it out but havent been able to
 
+import 'package:ctwr_midtown_radio_app/src/on_demand/controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:audio_service/audio_service.dart';
@@ -18,6 +19,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final settingsController = SettingsController(SettingsService());
+
+  OnDemand.primeCache(); 
 
   audioPlayerHandler = AudioPlayerHandler();
   

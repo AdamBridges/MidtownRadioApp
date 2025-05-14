@@ -2,29 +2,19 @@ import 'package:http/http.dart' as http;
 import 'package:dart_rss/dart_rss.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart'; // For debugPrint
+import 'dart:async';
 
 // utility to strip HTML tags -- this could use a second look over
 String _stripHtmlIfNeeded(String? htmlText) {
   if (htmlText == null || htmlText.isEmpty) {
     return '';
   }
-  // regex to remove HTML tags.
   final RegExp htmlRegExp = RegExp(r"<[^>]*>", multiLine: true, caseSensitive: false);
   String strippedText = htmlText.replaceAll(htmlRegExp, '');
-
-  // I havent encountered these -- I think we can expect the HTML to be non-malicious, but maybe more sanitation could be done just in case
-  // Replace common HTML entities manually if not using a package
-  // strippedText = strippedText.replaceAll('&nbsp;', ' ');
-  // strippedText = strippedText.replaceAll('&amp;', '&');
-  // strippedText = strippedText.replaceAll('&lt;', '<');
-  // strippedText = strippedText.replaceAll('&gt;', '>');
-  // strippedText = strippedText.replaceAll('&quot;', '"');
-  // strippedText = strippedText.replaceAll('&#39;', "'");
-
   return strippedText.trim();
 }
 
-/// represents a single podcast show/series 
+/// represents a single podcast show/series
 /// - *NOT any specific episode (see [Episode])
 class PodcastShow {
   final String title;
@@ -50,14 +40,14 @@ class PodcastShow {
 class Episode {
   final String guid;
   final String podcastName;
-  final String podcastImageUrl; 
-  final String? episodeSpecificImageUrl; 
+  final String podcastImageUrl;
+  final String? episodeSpecificImageUrl;
   final String episodeName;
   final String? episodeDescription;
   final String episodeStreamUrl;
   final String episodeDateForDisplay;
   final DateTime? episodeDateForSorting;
-  final String? duration; 
+  final String? duration;
 
   Episode({
     required this.guid,
@@ -76,14 +66,86 @@ class Episode {
 class OnDemand {
   List<PodcastShow> shows = [];
 
-  OnDemand._();
+  // caching
+  static OnDemand? _cachedInstance; // Holds the cached instance
+  static DateTime? _lastFetchTime;  // Timestamp of the last successful fetch
+  static final Duration _cacheValidityDuration = const Duration(hours: 1); // How long cache is considered fresh
+  
+  static bool _isFetching = false; // Flag to prevent concurrent fetches
+  static Completer<OnDemand>? _fetchCompleter; // Completer for ongoing fetch
 
-  static Future<OnDemand> create() async {
-    final onDemand = OnDemand._();
-    await onDemand._fetchShows();
-    return onDemand;
+  OnDemand._(); // Private constructor to ensure singleton-like access via create()
+
+  // Static factory method to get or create the OnDemand instance
+  static Future<OnDemand> create({bool forceRefresh = false}) async {
+    final now = DateTime.now();
+
+    // If a fetch is already in progress, return its future to avoid duplicate work
+    if (_isFetching && _fetchCompleter != null) {
+      // debugPrint("OnDemand.create: Fetch already in progress. Awaiting existing operation.");
+      return _fetchCompleter!.future;
+    }
+
+    // Check if cached data is available and still valid
+    if (!forceRefresh &&
+        _cachedInstance != null &&
+        _lastFetchTime != null &&
+        now.difference(_lastFetchTime!) < _cacheValidityDuration) {
+      // debugPrint("OnDemand.create: Returning valid cached instance.");
+      return _cachedInstance!;
+    }
+
+    // If cache is invalid, expired, or refresh is forced, fetch new data
+    // debugPrint("OnDemand.create: Cache MISS or REFRESH forced. Initiating fetch...");
+    _isFetching = true;
+    _fetchCompleter = Completer<OnDemand>(); // Create a new completer for this fetch operation
+
+    try {
+      // create new instance and populate
+      final newInstance = OnDemand._();
+      await newInstance._fetchShows();
+      
+      _cachedInstance = newInstance;
+      _lastFetchTime = DateTime.now();
+      
+      // debugPrint("OnDemand.create: Data fetched and cached successfully. Shows: ${_cachedInstance!.shows.length}");
+      _fetchCompleter!.complete(_cachedInstance);
+      return _cachedInstance!;
+    } catch (e, s) {
+      debugPrint("OnDemand.create: Error during fetch operation: $e\n$s");
+      // If fetch fails but an old cached instance exists, complete with old data
+      if (_cachedInstance != null) {
+        debugPrint("OnDemand.create: Fetch failed. Returning stale cached data.");
+        _fetchCompleter!.completeError(e, s);
+        return _cachedInstance!;
+      }
+      // If no cached data and fetch fails, complete with error and rethrow
+      _fetchCompleter!.completeError(e, s);
+      _isFetching = false; // Ensure flag is reset on unrecoverable error
+      rethrow;
+    } finally {
+      // Ensure fetching flag is reset regardless of outcome,
+      // unless another fetch has started (which _isFetching and _fetchCompleter handle at start)
+      // The primary reset of _isFetching after successful completion or error completion.
+      _isFetching = false;
+    }
   }
 
+  /// Call this method at app startup to pre-load and cache data.
+  static Future<void> primeCache() async {
+    // debugPrint("OnDemand.primeCache: Attempting to prime cache...");
+    try {
+      // Call create without forcing refresh initially, so it uses cache if fresh
+      await create(); 
+      //debugPrint("OnDemand.primeCache: Cache priming attempt finished.");
+    } catch (e) {
+      debugPrint("OnDemand.primeCache: Error during cache priming: $e. App will proceed with potentially stale or no cache.");
+      // Errors during priming are logged but don't necessarily stop app startup.
+      // The next call to create() will attempt to fetch again if needed.
+    }
+  }
+
+  // return DateTime object from RSS date string
   DateTime? _parseDate(String? dateString) {
     if (dateString == null || dateString.isEmpty) return null;
     List<String> patterns = [
@@ -115,28 +177,28 @@ class OnDemand {
         return "${seconds.toString()}s";
       }
     } catch (e) {
-      // If it's not just seconds (e.g., HH:MM:SS format already)
       if (itunesDuration.contains(':')) return itunesDuration;
       return '';
     }
   }
 
-  // gets shows from RSS
+  // gets shows from RSS - this populates the 'shows' list for the current instance
   Future<void> _fetchShows() async {
-    // get streams from fallback and from list of streams on GitHub
     final List<String> streamUrls = await _Streams.getStreams();
-    shows.clear();
+    // Clear shows for the current instance being fetched
+    // This method will be called on a new OnDemand._() instance each time a full fetch is needed
+    List<PodcastShow> fetchedShows = []; // Use a temporary list
 
     for (var url in streamUrls) {
       try {
-        debugPrint("Fetching feed: $url");
+        // debugPrint("Fetching feed: $url");
         final response = await http.get(Uri.parse(url));
         if (response.statusCode == 200) {
           final feed = RssFeed.parse(response.body);
 
           final String showTitle = feed.title ?? 'Untitled Show';
-          // Use _stripHtmlIfNeeded for show description as well
-          final String? showDescription = _stripHtmlIfNeeded(feed.description ?? feed.itunes?.summary);
+          final String showDescription = _stripHtmlIfNeeded(feed.description ?? feed.itunes?.summary);
+          // show picture falls back to MTR logo
           final String showImageUrl = feed.image?.url ??
               feed.itunes?.image?.href ??
               'assets/images/logo_mic_black_on_white.png';
@@ -153,15 +215,14 @@ class OnDemand {
               episodeDisplayDate = item.pubDate!;
             }
 
-            // Get episode description from <content:encoded> or <description> or <itunes:summary>
             String rawDescription = item.content?.value ?? item.description ?? item.itunes?.summary ?? '';
             String cleanedDescription = _stripHtmlIfNeeded(rawDescription);
 
             currentShowEpisodes.add(Episode(
               guid: item.guid ?? 'no_guid_${item.title}_${DateTime.now().millisecondsSinceEpoch}',
               podcastName: showTitle,
-              podcastImageUrl: showImageUrl, // Show image as fallback
-              episodeSpecificImageUrl: item.itunes?.image?.href, // Episode-specific image
+              podcastImageUrl: showImageUrl,
+              episodeSpecificImageUrl: item.itunes?.image?.href,
               episodeName: item.title ?? 'Untitled Episode',
               episodeDescription: cleanedDescription,
               episodeStreamUrl: item.enclosure?.url ?? '',
@@ -178,14 +239,15 @@ class OnDemand {
             return b.episodeDateForSorting!.compareTo(a.episodeDateForSorting!);
           });
 
-          shows.add(PodcastShow(
+          // Add to the temporary list for this fetch operation
+          fetchedShows.add(PodcastShow(
             title: showTitle,
-            description: showDescription, // Cleaned show description
+            description: showDescription,
             imageUrl: showImageUrl,
             publishDate: channelPubDateString,
             sortablePublishDate: channelSortablePubDate,
             episodes: currentShowEpisodes,
-            feedUrl: url, // Uses feedUrl as a unique ID for Hero
+            feedUrl: url,
           ));
         } else {
           debugPrint('Failed to load RSS feed ($url): ${response.statusCode}');
@@ -195,7 +257,7 @@ class OnDemand {
       }
     }
 
-    shows.sort((a, b) {
+    fetchedShows.sort((a, b) {
       if (a.sortablePublishDate == null && b.sortablePublishDate == null) {
         return a.title.compareTo(b.title);
       }
@@ -203,12 +265,14 @@ class OnDemand {
       if (b.sortablePublishDate == null) return -1;
       return b.sortablePublishDate!.compareTo(a.sortablePublishDate!);
     });
-    debugPrint("Fetched and processed ${shows.length} shows.");
+    
+    // Assign the fetched shows to the instance's shows list
+    shows = fetchedShows;
+    // debugPrint("Fetched and processed ${shows.length} shows for the current instance.");
   }
 }
 
 class _Streams {
-  // this is where we fetch any extra feeds from 
   static const String feedsUrl = 'https://raw.githubusercontent.com/CivicTechWR/MidtownRadioApp/cw-dynamic-feeds/assets/tempfeeds.txt';
   
   static const List<String> _fallback = [
@@ -220,21 +284,17 @@ class _Streams {
 
   static Future<List<String>> getStreams() async {
     try {
-      debugPrint("Fetching remote RSS feed URLs from $feedsUrl...");
-      // fetch any new feeds not already in the app
+      // debugPrint("Fetching remote RSS feed URLs from $feedsUrl...");
       final resp = await http.get(Uri.parse(feedsUrl));
       if (resp.statusCode == 200) {
         final List<String> remote = resp.body
-            .split('\n')
-            .map((l) => l.trim())
-            .where((l) => l.isNotEmpty && l.startsWith('http'))
-            .toList();
-      debugPrint("Done fetching remote");
+          .split('\n')
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty && l.startsWith('http'))
+          .toList();
+      // debugPrint("Done fetching remote");
 
-
-        // take union of fallback and fetched
         if (remote.isNotEmpty) {
-
             final remoteSet = Set<String>.from(remote);
             final mergedStreams = List<String>.from(remote);
             for (var fallbackUrl in _fallback) {
@@ -242,7 +302,6 @@ class _Streams {
                     mergedStreams.add(fallbackUrl);
                 }
             }
-            //debugPrint("Successfully fetched and merged ${mergedStreams.length} feed URLs.");
             return mergedStreams;
         } else {
             debugPrint("Remote feed URL list was empty. Using fallback: ${_fallback.length} URLs.");

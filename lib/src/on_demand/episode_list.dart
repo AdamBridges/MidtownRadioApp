@@ -21,6 +21,7 @@ class EpisodeListPage extends StatefulWidget {
 }
 
 class _EpisodeListPageState extends State<EpisodeListPage> {
+  
   // pagination vars
   late List<Episode> _episodes;
   int _itemsToLoad = 15;
@@ -188,129 +189,132 @@ class _EpisodeListTile extends StatelessWidget {
     final String imageUrlToDisplay = episode.episodeSpecificImageUrl ?? episode.podcastImageUrl;
 
     return StreamBuilder<MediaItem?>(
-        stream: audioHandler.mediaItem,
-        builder: (context, snapshot) {
-          final currentMediaItem = snapshot.data;
-          final isSelected = currentMediaItem?.id == episode.episodeStreamUrl && episode.episodeStreamUrl.isNotEmpty;
+    stream: audioHandler.mediaItem,
+    builder: (context, snapshot) {
+      final currentMediaItem = snapshot.data;
+      final isSelected = currentMediaItem?.id == episode.episodeStreamUrl && episode.episodeStreamUrl.isNotEmpty;
 
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 7.0),
-            elevation: 1.5,
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              // ontap - set url and start playin'
-              onTap: episode.episodeStreamUrl.isNotEmpty ? () {
-                debugPrint("url: ${episode.episodeStreamUrl}");
-                
-                audioPlayerHandler.customSetStream(
-                   MediaItem(
-                    id: episode.episodeStreamUrl,
-                    title: episode.episodeName,
-                    album: episode.podcastName,
-                    artUri: Uri.parse(imageUrlToDisplay),
-                    duration: episode.duration != null && episode.duration!.contains(':')
-                              ? _parseDurationToSystem(episode.duration!) 
-                              : (episode.duration != null ? Duration(seconds: int.tryParse(episode.duration!) ?? 0) : null),
-                    extras: {'description': episode.episodeDescription ?? ''}
-                  )
-                );
-              } : null,
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
+      return Card(
+        margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 7.0),
+        elevation: 1.5,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          // ontap - set url and start playin'
+          onTap: episode.episodeStreamUrl.isNotEmpty ? () {
+            // debugPrint("url: ${episode.episodeStreamUrl}");
+            final toPlay = MediaItem(
+                id: episode.episodeStreamUrl,
+                title: episode.episodeName,
+                album: episode.podcastName,
+                artUri: Uri.parse(imageUrlToDisplay),
+                // duration: null,
+                duration: episode.duration != null && episode.duration!.contains(':')
+                  ? _parseDurationToSystem(episode.duration!) 
+                  : (episode.duration != null ? Duration(seconds: int.tryParse(episode.duration!) ?? 0) : null),
+                extras: {'description': episode.episodeDescription ?? ''}
+              );
+            // debugPrint("\n\nTo Play: $toPlay\n\n");
+            audioPlayerHandler.customSetStream(
+              toPlay
+            );
+          } : null,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            episode.episodeName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14.5,
+                              color: isSelected ? Theme.of(context).colorScheme.primary : null,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Row(
                             children: [
+                              Icon(Icons.calendar_today_outlined, size: 12, color: Colors.grey[700]),
+                              const SizedBox(width: 4),
                               Text(
-                                episode.episodeName,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14.5,
-                                  color: isSelected ? Theme.of(context).colorScheme.primary : null,
+                                episode.episodeDateForDisplay,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[700], fontSize: 11.5),
+                              ),
+                              if (episode.duration != null && episode.duration!.isNotEmpty) ...[
+                                const Text(" • ", style: TextStyle(color: Colors.grey, fontSize: 11.5)),
+                                Icon(Icons.timer_outlined, size: 12, color: Colors.grey[700]),
+                                const SizedBox(width: 4),
+                                Text(
+                                  episode.duration!,
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[700], fontSize: 11.5),
                                 ),
-                              ),
-                              const SizedBox(height: 5),
-                              Row(
-                                children: [
-                                  Icon(Icons.calendar_today_outlined, size: 12, color: Colors.grey[700]),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    episode.episodeDateForDisplay,
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[700], fontSize: 11.5),
-                                  ),
-                                  if (episode.duration != null && episode.duration!.isNotEmpty) ...[
-                                    const Text(" • ", style: TextStyle(color: Colors.grey, fontSize: 11.5)),
-                                    Icon(Icons.timer_outlined, size: 12, color: Colors.grey[700]),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      episode.duration!,
-                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[700], fontSize: 11.5),
-                                    ),
-                                  ]
-                                ],
-                              ),
+                              ]
                             ],
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6.0),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6.0),
 
-                          // image for that show
-                          child: Image.network(
-                            imageUrlToDisplay,
+                      // image for that show
+                      child: Image.network(
+                        imageUrlToDisplay,
+                        width: 70,
+                        height: 70,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
                             width: 70,
                             height: 70,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: 70,
-                                height: 70,
-                                color: Colors.grey[200],
-                                child: Icon(Icons.image_not_supported_outlined, size: 30, color: Colors.grey[400]),
-                              );
-                            },
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return SizedBox(
-                                width: 70,
-                                height: 70,
-                                child: Center(child: CircularProgressIndicator(strokeWidth: 2.0, value: loadingProgress.expectedTotalBytes != null ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes! : null)),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
+                            color: Colors.grey[200],
+                            child: Icon(Icons.image_not_supported_outlined, size: 30, color: Colors.grey[400]),
+                          );
+                        },
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return SizedBox(
+                            width: 70,
+                            height: 70,
+                            child: Center(child: CircularProgressIndicator(strokeWidth: 2.0, value: loadingProgress.expectedTotalBytes != null ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes! : null)),
+                          );
+                        },
+                      ),
                     ),
-                    if (episode.episodeDescription != null && episode.episodeDescription!.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      Text(
-                        episode.episodeDescription!,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12.5, color: Colors.black87),
-                      ),
-                    ],
-                    if (episode.episodeStreamUrl.isEmpty)
-                      Padding( 
-                        padding: EdgeInsets.all(8),
-                        child: Text("audio unavailable")
-                      ),
                   ],
                 ),
-              ),
+                if (episode.episodeDescription != null && episode.episodeDescription!.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    episode.episodeDescription!,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12.5, color: Colors.black87),
+                  ),
+                ],
+                if (episode.episodeStreamUrl.isEmpty)
+                  Padding( 
+                    padding: EdgeInsets.all(8),
+                    child: Text("audio unavailable")
+                  ),
+              ],
             ),
-          );
-        });
+          ),
+        ),
+      );
+    });
   }
+
    // Helper to parse duration string like "HH:MM:SS" or "MM:SS" to Duration object for audio_service
   Duration? _parseDurationToSystem(String durationString) {
     final parts = durationString.split(':').map((p) => int.tryParse(p) ?? 0).toList();

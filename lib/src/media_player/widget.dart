@@ -1,6 +1,6 @@
 // lib/src/media_player/widget.dart
 import 'package:ctwr_midtown_radio_app/main.dart';
-import 'package:ctwr_midtown_radio_app/src/media_player/audio_player_handler.dart';
+// import 'package:ctwr_midtown_radio_app/src/media_player/audio_player_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:ctwr_midtown_radio_app/src/media_player/fullscreen_player_modal.dart';
@@ -86,12 +86,9 @@ class _PlayerWidgetState extends State<PlayerWidget> {
         } else {
           secondaryDisplay = mediaItem?.album?.isNotEmpty == true ? mediaItem!.album! : "On Demand";
         }
-        // SHOWING ON DEMAND EVEN WHEN LIVE?? 
-
 
         return GestureDetector(
           onTap: hasMedia ? () => _showFullScreenPlayer(widget.navigatorKey.currentContext!) : null,
-          // --- Add Horizontal Drag for Next/Previous ---
           // onHorizontalDragEnd: !isLiveStream && hasMedia
           //     ? (details) {
           //         final currentPlaybackState = audioHandler.playbackState.value; // Get current playback state
@@ -133,20 +130,33 @@ class _PlayerWidgetState extends State<PlayerWidget> {
                 ),
                 child: Row(
                   children: [
-                    (isLoading)
+                    SizedBox(
+                      height: 48,
+                      width: 48,
+                      child: (isLoading)
                         ? const Padding(
-                          padding: EdgeInsets.all(8),
-                          child: CircularProgressIndicator(),
+                          padding: EdgeInsets.all(10.0),
+                          child: SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(),
+                          ),
                         )
                         : IconButton(
                             iconSize: 28,
                             icon: Icon(isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded),
                             onPressed: () {
                               if (primaryDisplay.isNotEmpty && primaryDisplay != "Nothing is loaded...") {
-                                if (isPlaying) audioHandler.pause(); else audioHandler.play();
+                                if (isPlaying) {
+                                  audioHandler.pause();
+                                } else {
+                                  audioHandler.play();
+                                }
                               }
                             },
                           ),
+                    ),
+                    
                     const SizedBox(width: 8),
                     Expanded(
                       child: Column(
@@ -159,7 +169,7 @@ class _PlayerWidgetState extends State<PlayerWidget> {
                               secondaryDisplay,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 fontSize: 11,
-                                color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
+                                color: theme.textTheme.bodySmall?.color?.withAlpha((0.7 * 256).round()),
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -177,7 +187,7 @@ class _PlayerWidgetState extends State<PlayerWidget> {
                     ),
                     // Optional: Visual cue for swiping if not live
                     if (!isLiveStream && (playbackState?.controls.any((c) => c == MediaControl.skipToNext || c == MediaControl.skipToPrevious) ?? false))
-                        Icon(Icons.swap_horiz_rounded, color: theme.iconTheme.color?.withOpacity(0.4), size: 22)
+                        Icon(Icons.swap_horiz_rounded, color: theme.iconTheme.color?.withAlpha((0.4 * 256).round()), size: 22)
                     else
                         const SizedBox(width:22), // Maintain space
                     const SizedBox(width: 8),

@@ -16,9 +16,20 @@ class AudioPlayerHandler extends BaseAudioHandler {
     _player.playbackEventStream.listen((event) {
       final playing = _player.playing;
       final processingState = _player.processingState;
-
       // get current media item for context
       final currentMediaItem = mediaItem.value;
+
+      // Inside AudioPlayerHandler constructor, _player.playbackEventStream.listen:
+      if (processingState == ProcessingState.completed) {
+        debugPrint("AudioPlayerHandler: Item COMPLETED by just_audio: '${currentMediaItem?.title}'");
+        debugPrint("  >> At actual player position: ${_player.position}"); // Get current position directly from player
+        debugPrint("  >> event.updatePosition was: ${event.updatePosition}");
+        debugPrint("  >> MediaItem perceived duration was: ${currentMediaItem?.duration}");
+        debugPrint("  >> just_audio _player.duration (last known): ${_player.duration}");
+        debugPrint("  >> CurrentIndex: $_currentIndex, Queue Length: ${_queue.length}");
+        // ... rest of your logic (Future.microtask(()=> stop()) etc.)
+      }
+
 
       playbackState.add(playbackState.value.copyWith(
         controls: _getControls(playing, processingState, currentMediaItem),
@@ -34,10 +45,10 @@ class AudioPlayerHandler extends BaseAudioHandler {
       if (processingState == ProcessingState.completed) {
         // only skip to next if it's not a live stream and there's a next item
         if (currentMediaItem?.isLive != true && _currentIndex < _queue.length - 1) {
-          skipToNext();
+          Future.microtask(() => skipToNext());
         } else if (currentMediaItem?.isLive != true) {
           // stops at the end of an on-demand queue
-          stop();
+          Future.microtask(() => stop());
         } else{
           debugPrint("Yeah... this shouldnt happen. theres an error if the live stream 'completes'");
         }
@@ -81,7 +92,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
       // Get ICY metadata - in the form 'session - artist - song title'
       // Where 'session' is something like "slow music hour" -- the radio station's programming for that time
       final rawMetaData = icyMetadata?.info?.title;
-      debugPrint("ICY Metadata received: '$rawMetaData'");
+      // debugPrint("ICY Metadata received: '$rawMetaData'");
 
       if (rawMetaData == null || rawMetaData.isEmpty) return;
 
@@ -126,13 +137,14 @@ class AudioPlayerHandler extends BaseAudioHandler {
 
         // broadcast updated ICY to rest of app
         mediaItem.add(updated);
-        debugPrint("Updated Live MediaItem: $updated");
+        // debugPrint("Updated Live MediaItem: $updated");
       }
     });
 
     // updates the duration of the currently playing audio, for example when a song is changed
     _player.durationStream.listen((duration) {
        final currentMediaItem = mediaItem.value;
+      // debugPrint("AudioPlayerHandler: DurationStream reported by just_audio for '${currentMediaItem?.title}': $duration");
       if (currentMediaItem != null && duration != null && currentMediaItem.duration != duration) {
         // For live streams, duration might be null or Duration.zero 
         // Only update if it's a meaningful change, especially for on-demand.
@@ -251,7 +263,11 @@ class AudioPlayerHandler extends BaseAudioHandler {
     ));
 
     try {
-      await _player.setAudioSource(AudioSource.uri(Uri.parse(newItemToPlay.id)), preload: false);
+      await _player.setAudioSource(
+        AudioSource.uri(Uri.parse(newItemToPlay.id)), 
+        preload: false, 
+        initialPosition: Duration.zero,
+      );
       if (playWhenReady) {
         _player.play();
       }

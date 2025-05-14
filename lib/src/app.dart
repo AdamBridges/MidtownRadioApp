@@ -1,5 +1,5 @@
 import 'package:ctwr_midtown_radio_app/main.dart';
-import 'package:ctwr_midtown_radio_app/src/on_demand/episode_list.dart';
+// import 'package:ctwr_midtown_radio_app/src/on_demand/episode_list.dart';
 import 'package:ctwr_midtown_radio_app/src/settings/controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -51,36 +51,34 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
                 body: child,
                 // Changed to nav bar so that body contents don't end up behind it
                 bottomNavigationBar: ValueListenableBuilder<bool>(
-  valueListenable: isModalOpen,
-  builder: (context, modalOpen, _) {
-    if (modalOpen) return const SizedBox.shrink();
-    return StreamBuilder<MediaItem?>(
-      stream: audioHandler.mediaItem,
-      builder: (context, mediaSnapshot) {
-        final mediaItem = mediaSnapshot.data;
-        return StreamBuilder<PlaybackState>(
-          stream: audioHandler.playbackState,
-          builder: (context, stateSnapshot) {
-            final playbackState = stateSnapshot.data;
-            final processingState = playbackState?.processingState ??
-                AudioProcessingState.idle;
+                valueListenable: isModalOpen,
+                builder: (context, modalOpen, _) {
+                  if (modalOpen) return const SizedBox.shrink();
+                  return StreamBuilder<MediaItem?>(
+                    stream: audioHandler.mediaItem,
+                    builder: (context, mediaSnapshot) {
+                      final mediaItem = mediaSnapshot.data;
+                      return StreamBuilder<PlaybackState>(
+                        stream: audioHandler.playbackState,
+                        builder: (context, stateSnapshot) {
+                          final playbackState = stateSnapshot.data;
+                          final processingState = playbackState?.processingState ??
+                              AudioProcessingState.idle;
 
-            final showPlayer = mediaItem != null &&
-                processingState != AudioProcessingState.idle;
+                          final showPlayer = mediaItem != null &&
+                              processingState != AudioProcessingState.idle;
 
-            if (!showPlayer) return const SizedBox.shrink();
-            return PlayerWidget(
-              navigatorKey: navigatorKey,
-              isModalOpen: isModalOpen,
-            );
-          },
-        );
-      },
-    );
-  },
-),
-
-
+                          if (!showPlayer) return const SizedBox.shrink();
+                          return PlayerWidget(
+                            navigatorKey: navigatorKey,
+                            isModalOpen: isModalOpen,
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
             ),
 
             initialRoute: HomePage.routeName,
