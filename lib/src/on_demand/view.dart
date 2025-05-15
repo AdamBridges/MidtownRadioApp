@@ -1,8 +1,12 @@
-import 'package:audio_service/audio_service.dart';
-import 'package:ctwr_midtown_radio_app/main.dart';
+// import 'package:audio_service/audio_service.dart';
+// import 'package:ctwr_midtown_radio_app/main.dart';
 import 'package:flutter/material.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/controller.dart';
+import 'package:intl/intl.dart';
+import 'package:ctwr_midtown_radio_app/src/on_demand/episode_list.dart';
 
+// This page displays list of podcasts, for user to click and see list of episodes per podcast
+/// The list of episodes has been moved to [EpisodeListPage]
 class OnDemandPage extends StatefulWidget {
   const OnDemandPage({super.key});
   static const routeName = '/on_demand';
@@ -13,221 +17,150 @@ class OnDemandPage extends StatefulWidget {
 }
 
 class _OnDemandPageState extends State<OnDemandPage> {
-  late Future<OnDemand> onDemandFuture;
-
-  List<String> filters = ['All'];
-  late String selectedFilter;
- // List<Episode> _displayedEpisodes = [];
-  int itemsToLoad = 10;
-  bool isLoadingMore = false;
-  bool _showBackToTop = false;
-  final ScrollController _scrollController = ScrollController();
+  late Future<OnDemand> _onDemandFuture;
 
   @override
   void initState() {
     super.initState();
-    onDemandFuture = OnDemand.create();
-    selectedFilter = filters[0];
-    _scrollController.addListener(() {
-      // This logic determines whether or not to show the "back to top" button
-      final bool shouldShow = _scrollController.offset > 100;
-      // Only call setState if the state needs to change
-        if (shouldShow != _showBackToTop) {
-          setState(() {
-            _showBackToTop = shouldShow;
-          });
-        }
-
-      // If we are 200 pixels from the bottom, start loading more if were not already
-      // I find this makes the UX much better than if we have to get to the very bottom to start loading, and has minimal performance cost
-      // ^ very rarely does the user even see the loading icon, scrolling at a reasonable speed 
-      if (_scrollController.position.pixels >=
-              _scrollController.position.maxScrollExtent - 200  &&
-          !isLoadingMore) {
-        _loadMoreEpisodes();
-      }
-    });
+    _onDemandFuture = OnDemand.create();
   }
 
-  void _loadMoreEpisodes() {
-    setState(() {
-        isLoadingMore = true;
-    });
-
-    Future.delayed(const Duration(milliseconds: 100), () {
-      setState(() {
-        itemsToLoad += 10;
-        isLoadingMore = false;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
+  String _formatShowDisplayDate(DateTime? sortableDate, String? originalDateString) {
+    if (sortableDate != null) {
+      return DateFormat('MMM d, yyyy').format(sortableDate);
+    }
+    if (originalDateString != null && originalDateString.isNotEmpty) {
+      return originalDateString.length > 16 ? "${originalDateString.substring(0, 16)}..." : originalDateString;
+    }
+    return 'Date N/A';
   }
 
   @override
   Widget build(BuildContext context) {
-    return
-        FutureBuilder(
-      future: onDemandFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return const Center(child: Text('Error fetching shows'));
-        } else if (!snapshot.hasData) {
-          return const Center(child: Text('No shows available'));
-        } else {
-          final onDemand = snapshot.data!;
-          filters = [
-            'All',
-            ...onDemand.episodes.map((e) => e.podcastName).toSet()
-          ];
-          final filteredEpisodes = selectedFilter == filters[0]
-              ? onDemand.episodes
-              : onDemand.episodes
-                  .where((episode) => episode.podcastName == selectedFilter)
-                  .toList();
-
-          return Scaffold(
-            floatingActionButton: _showBackToTop
-                ? FloatingActionButton(
-                    onPressed: () {
-                      _scrollController.animateTo(
-                        0,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
+    return Scaffold(
+      // List of shows using futurebuilder
+      body: FutureBuilder<OnDemand>(
+        future: _onDemandFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text("An unexpected error has occured. Please try again later."));
+          } else if (!snapshot.hasData || snapshot.data!.shows.isEmpty) {
+            return Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: const Center(child: Text('No shows available. \nPlease ensure you are connected to the internet.', textAlign: TextAlign.center,)),
+            );
+          } else {
+            final List<PodcastShow> shows = snapshot.data!.shows;
+            return ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              itemCount: shows.length,
+              itemBuilder: (context, index) {
+                final show = shows[index];
+                // Unique tag for hero animation. Using feedUrl as it should be unique per show.
+                final String heroTag = "showImage_${show.feedUrl}";
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+                  elevation: 2.5,
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    // When user clicks on a show we take them to the page with all the episodes
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EpisodeListPage(show: show, heroTag: heroTag),
+                        ),
                       );
                     },
-                    child: const Icon(Icons.arrow_upward),
-                  )
-                : null,
-            body: Column(children: [
-            DropdownButton<String>(
-              value: selectedFilter, // Set the current value
-              items: filters.map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 80,
+                            height: 80,
+                            child: Hero(
+                              tag: heroTag,
+                              child: Container( // This Container will apply the border and clip its child
+                                // clipBehavior: Clip.antiAlias, // Clips the Image.network to the borderRadius
+                                // decoration: BoxDecoration(
+                                //   borderRadius: BorderRadius.circular(12.0), // Rounds the corners of the border and image
+                                //   border: Border.all(
+                                //     //color: (Theme.of(context).brightness == Brightness.dark) ?Color.fromRGBO(23, 204, 204, 1):Color(0xff00989d),
+                                //     color: const Color(0xFFf05959),
+                                //     width: 4.0, // Outline thickness
+                                //   ),
+                                // ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8.0),
+                                  child: Image.network(
+                                    show.imageUrl,
+                                    fit: BoxFit.cover,
+                                    width: 80, // Ensure image tries to fill
+                                    height: 80,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        color: Colors.grey[200],
+                                        child: Icon(Icons.image_not_supported_outlined, size: 30, color: Colors.grey[400]),
+                                      );
+                                    },
+                                    loadingBuilder: (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Center(
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.0,
+                                          value: loadingProgress.expectedTotalBytes != null
+                                              ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                              : null,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  show.title,
+                                  style: TextStyle(fontSize: 16,fontWeight: FontWeight.w900),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                if (show.description != null && show.description!.isNotEmpty)
+                                  Text(
+                                    show.description!,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context).textTheme.bodyMedium,
+                                  ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Updated: ${_formatShowDisplayDate(show.sortablePublishDate, show.publishDate)}',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850], fontSize: 11),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 );
-              }).toList(),
-              onChanged: (String? newSelectedFilter) {
-                if (newSelectedFilter != null) {
-                  setState(() {
-                    selectedFilter = newSelectedFilter;
-                    itemsToLoad = 10;
-                  });
-                }
               },
-            ),
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                itemCount: filteredEpisodes.take(itemsToLoad).length +
-                    (!isLoadingMore ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (index == itemsToLoad && isLoadingMore) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (index >= filteredEpisodes.length) {
-                    return const SizedBox.shrink();
-                  }
-
-                  final Episode show = filteredEpisodes[index];
-                  return _OnDemandListTile(
-                    podcastName: show.podcastName,
-                    podcastImageUrl: show.podcastImageUrl,
-                    podcastEpisodeName: show.episodeName,
-                    podcastEpisodeDate: show.episodeDate,
-                    podcastEpisodeStreamUrl: show.episodeStreamUrl,
-                    duration: show.duration,
-                  );
-                },
-              ),
-            )
-          ]));
-        }
-      },
-    );
-  }
-}
-
-// Defines view for a single show in the list
-class _OnDemandListTile extends StatelessWidget {
-  // ignore: use_super_parameters
-  const _OnDemandListTile({
-    Key? key,
-    required this.podcastName,
-    required this.podcastImageUrl,
-    required this.podcastEpisodeName,
-    required this.podcastEpisodeDate,
-    required this.podcastEpisodeStreamUrl,
-    required this.duration,
-  }) : super(key: key);
-
-  final String podcastName;
-  final String podcastImageUrl;
-  final String podcastEpisodeName;
-  final String podcastEpisodeDate;
-  final String podcastEpisodeStreamUrl;
-  final String duration;
-
-  Duration _parseDuration(String duration) {
-    final parts = duration.split(':').map(int.parse).toList();
-    if (parts.length == 3) {
-      return Duration(hours: parts[0], minutes: parts[1], seconds: parts[2]);
-    } else if (parts.length == 2) {
-      return Duration(minutes: parts[0], seconds: parts[1]);
-    } else if (parts.length == 1) {
-      return Duration(seconds: parts[0]);
-    } else {
-      return Duration.zero;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<MediaItem?>(
-      stream: audioHandler.mediaItem,// Listen to the current media item
-      builder: (context, snapshot) {
-        final currentMediaItem = snapshot.data;
-        final isSelected = currentMediaItem?.id == podcastEpisodeStreamUrl;
-
-        return Column(
-          children: [
-            ListTile(
-              leading: Image.network(podcastImageUrl),// cachedImage != null ? Image.memory(cachedImage) : Image.network(podcastImageUrl),
-              title: Text(
-                podcastEpisodeName,
-                maxLines: 1,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(podcastName),
-                  Text(podcastEpisodeDate),
-                ],
-              ),
-              selected: isSelected,
-              selectedTileColor: Theme.of(context).highlightColor,
-              onTap: () => audioPlayerHandler.setStream(
-                MediaItem(
-                  id: podcastEpisodeStreamUrl,
-                  title: podcastEpisodeName,
-                  album: podcastName,
-                  artUri: Uri.parse(podcastImageUrl),
-                  duration: _parseDuration(duration),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+            );
+          }
+        },
+      ),
     );
   }
 }

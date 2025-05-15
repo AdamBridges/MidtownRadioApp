@@ -1,4 +1,5 @@
 import 'package:ctwr_midtown_radio_app/main.dart';
+// import 'package:ctwr_midtown_radio_app/src/on_demand/episode_list.dart';
 import 'package:ctwr_midtown_radio_app/src/settings/controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -26,7 +27,10 @@ class MidtownRadioApp extends StatelessWidget {
 }
 
 class MidtownRadioStateful extends StatefulWidget {
-  const MidtownRadioStateful({super.key, required this.settingsController});
+  const MidtownRadioStateful({
+    Key? key,
+    required this.settingsController
+  }): super(key: key);
 
   final SettingsController settingsController;
 
@@ -36,60 +40,70 @@ class MidtownRadioStateful extends StatefulWidget {
 
 class MidtownRadioState extends State<MidtownRadioStateful> {
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey();
+  final ValueNotifier<bool> isModalOpen = ValueNotifier<bool>(false);
 
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: widget.settingsController,
-      builder: (BuildContext context, Widget? child) {
-        return MaterialApp(
-          navigatorKey: navigatorKey,
-          builder: (context, child) {
-            return Overlay(
-              initialEntries: [
-                OverlayEntry(
-                  builder: (context) => Scaffold(
-                    body: child,
-                  ),
-                ),
-                OverlayEntry(
-                  builder: (context) => StreamBuilder<MediaItem?>(
+        listenable: widget.settingsController,
+        builder: (BuildContext context, Widget? child) {
+          return MaterialApp(
+            navigatorKey: navigatorKey,
+
+            builder: (context, child) => Scaffold(
+                body: child,
+                // Changed to nav bar so that body contents don't end up behind it
+                bottomNavigationBar: ValueListenableBuilder<bool>(
+                valueListenable: isModalOpen,
+                builder: (context, modalOpen, _) {
+                  if (modalOpen) return const SizedBox.shrink();
+                  return StreamBuilder<MediaItem?>(
                     stream: audioHandler.mediaItem,
-                    builder: (context, snapshot) {
-                      if (snapshot.data == null) {
-                        return const SizedBox.shrink();
-                      }
-                      return Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: PlayerWidget(
-                          navigatorKey: navigatorKey,
-                          audioPlayerHandler: audioPlayerHandler,
-                        ),
+                    builder: (context, mediaSnapshot) {
+                      final mediaItem = mediaSnapshot.data;
+                      return StreamBuilder<PlaybackState>(
+                        stream: audioHandler.playbackState,
+                        builder: (context, stateSnapshot) {
+                          final playbackState = stateSnapshot.data;
+                          final processingState = playbackState?.processingState ??
+                              AudioProcessingState.idle;
+
+                          final showPlayer = mediaItem != null &&
+                              processingState != AudioProcessingState.idle;
+
+                          if (!showPlayer) return const SizedBox.shrink();
+                          return PlayerWidget(
+                            navigatorKey: navigatorKey,
+                            isModalOpen: isModalOpen,
+                          );
+                        },
                       );
                     },
-                  ),
-                ),
-              ],
-            );
-          },
-          initialRoute: HomePage.routeName,
+                  );
+                },
+              ),
+            ),
+
+            initialRoute: HomePage.routeName,
+
           localizationsDelegates: const [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
+
           supportedLocales: const [
             Locale('en', ''),
             Locale('fr', ''),
           ],
-          onGenerateTitle: (BuildContext context) =>
-              AppLocalizations.of(context)!.appTitle,
+
+          onGenerateTitle: (BuildContext context) =>  AppLocalizations.of(context)!.appTitle,
+
           theme: ThemeData(),
           darkTheme: ThemeData.dark(),
           themeMode: widget.settingsController.themeMode,
+
           onGenerateRoute: (RouteSettings routeSettings) {
             return MaterialPageRoute<void>(
               settings: routeSettings,
@@ -102,17 +116,15 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
                   case OnDemandPage.routeName:
                     return const OnDemandPage();
                   case SettingsPage.routeName:
-                    return SettingsPage(
-                      controller: widget.settingsController,
-                    );
+                    return SettingsPage(controller: widget.settingsController,);
                   default:
                     return const ErrorPage();
                 }
-              },
+              }
             );
           },
         );
-      },
-    );
+      }
+      );
   }
 }
