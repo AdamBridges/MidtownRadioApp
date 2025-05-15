@@ -179,20 +179,28 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
 }
 
 // view of one single episode - clickable to set stream
-class _EpisodeListTile extends StatelessWidget {
+class _EpisodeListTile extends StatefulWidget {
   final Episode episode;
   const _EpisodeListTile({required this.episode});
 
   @override
+  State<_EpisodeListTile> createState() => _EpisodeListTileState();
+}
+
+class _EpisodeListTileState extends State<_EpisodeListTile> {
+
+  bool showFullDescription = false;
+
+  @override
   Widget build(BuildContext context) {
     // Use episode-specific image if available, otherwise fallback to show's image
-    final String imageUrlToDisplay = episode.episodeSpecificImageUrl ?? episode.podcastImageUrl;
+    final String imageUrlToDisplay = widget.episode.episodeSpecificImageUrl ?? widget.episode.podcastImageUrl;
 
     return StreamBuilder<MediaItem?>(
     stream: audioHandler.mediaItem,
     builder: (context, snapshot) {
       final currentMediaItem = snapshot.data;
-      final isSelected = currentMediaItem?.id == episode.episodeStreamUrl && episode.episodeStreamUrl.isNotEmpty;
+      final isSelected = currentMediaItem?.id == widget.episode.episodeStreamUrl && widget.episode.episodeStreamUrl.isNotEmpty;
 
       return Card(
         margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 7.0),
@@ -200,18 +208,18 @@ class _EpisodeListTile extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           // ontap - set url and start playin'
-          onTap: episode.episodeStreamUrl.isNotEmpty ? () {
+          onTap: widget.episode.episodeStreamUrl.isNotEmpty ? () {
             // debugPrint("url: ${episode.episodeStreamUrl}");
             final toPlay = MediaItem(
-                id: episode.episodeStreamUrl,
-                title: episode.episodeName,
-                album: episode.podcastName,
+                id: widget.episode.episodeStreamUrl,
+                title: widget.episode.episodeName,
+                album: widget.episode.podcastName,
                 artUri: Uri.parse(imageUrlToDisplay),
                 // duration: null,
-                duration: episode.duration != null && episode.duration!.contains(':')
-                  ? _parseDurationToSystem(episode.duration!) 
-                  : (episode.duration != null ? Duration(seconds: int.tryParse(episode.duration!) ?? 0) : null),
-                extras: {'description': episode.episodeDescription ?? ''}
+                duration: widget.episode.duration != null && widget.episode.duration!.contains(':')
+                  ? _parseDurationToSystem(widget.episode.duration!) 
+                  : (widget.episode.duration != null ? Duration(seconds: int.tryParse(widget.episode.duration!) ?? 0) : null),
+                extras: {'description': widget.episode.episodeDescription ?? ''}
               );
             // debugPrint("\n\nTo Play: $toPlay\n\n");
             audioPlayerHandler.customSetStream(
@@ -219,7 +227,9 @@ class _EpisodeListTile extends StatelessWidget {
             );
           } : null,
           child: Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: EdgeInsets.fromLTRB(12.0, 12.0, 12.0, (
+              widget.episode.episodeDescription != null && widget.episode.episodeDescription!.length < 240
+            ) ? 12.0: 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -231,7 +241,7 @@ class _EpisodeListTile extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            episode.episodeName,
+                            widget.episode.episodeName,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -250,15 +260,15 @@ class _EpisodeListTile extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                episode.episodeDateForDisplay,
+                                widget.episode.episodeDateForDisplay,
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850], fontSize: 11.5),
                               ),
-                              if (episode.duration != null && episode.duration!.isNotEmpty) ...[
+                              if (widget.episode.duration != null && widget.episode.duration!.isNotEmpty) ...[
                                 Text(" • ", style: TextStyle(color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850], fontSize: 11.5)),
                                 Icon(Icons.timer_outlined, size: 12, color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850]),
                                 const SizedBox(width: 4),
                                 Text(
-                                  episode.duration!,
+                                  widget.episode.duration!,
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850], fontSize: 11.5),
                                 ),
                               ]
@@ -297,16 +307,30 @@ class _EpisodeListTile extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (episode.episodeDescription != null && episode.episodeDescription!.isNotEmpty) ...[
+                if (widget.episode.episodeDescription != null && widget.episode.episodeDescription!.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Text(
-                    episode.episodeDescription!,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
+                    widget.episode.episodeDescription!,
+                    maxLines: showFullDescription ? null : 3,
+                    overflow: showFullDescription ? TextOverflow.visible : TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
-                if (episode.episodeStreamUrl.isEmpty)
+                if (widget.episode.episodeDescription != null && widget.episode.episodeDescription!.length >= 240) Center(
+                  child: ElevatedButton(
+                    style: ButtonStyle(
+                      shadowColor: WidgetStateProperty.all<Color>(Colors.transparent),
+                      padding: WidgetStateProperty.all<EdgeInsets>(const EdgeInsets.symmetric(horizontal: 10, vertical: 0)),
+                    ),
+                    onPressed: ()=>setState(() {
+                      if (widget.episode.episodeDescription != null && widget.episode.episodeDescription!.length < 240) {
+                        showFullDescription = true;
+                      } else {
+                        showFullDescription = !showFullDescription;
+                      }
+                  }), child: Text(showFullDescription ? "Show Less" : "Show More")),
+                ),
+                if (widget.episode.episodeStreamUrl.isEmpty)
                   Padding( 
                     padding: EdgeInsets.all(8),
                     child: Text("audio unavailable")
