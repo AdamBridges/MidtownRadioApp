@@ -54,18 +54,16 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
 
             builder: (context, child) => Scaffold(
               bottomSheet: Consumer<ErrorMessageProvider>(
-                builder: (context,error,child)=>SizedBox(
-                  height: error.errorMessage.isNotEmpty ? 100 : 0,
+                builder: (context,error,child)=> (error.errorMessage.isNotEmpty) ? (IntrinsicHeight(
                   child: Row(
                     children: [
-                      Text(error.errorMessage),
+                      Expanded(child: Text(error.errorMessage.toString())),
                       ElevatedButton(onPressed: ()=>{
-                        debugPrint("Error message dismissed"),
                         error.clearErrorMessage()
                         }, child: Text("Close")),
                     ],
                   ),
-                ),
+                )) : const SizedBox.shrink(),
               ),
                 body: child,
                 // Changed to nav bar so that body contents don't end up behind it

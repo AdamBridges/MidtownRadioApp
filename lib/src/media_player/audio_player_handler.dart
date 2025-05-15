@@ -5,7 +5,7 @@ import 'package:audio_service/audio_service.dart';
 
 class AudioPlayerHandler extends BaseAudioHandler {
   final AudioPlayer _player = AudioPlayer();
-  final ErrorMessageProvider _errorMessageProvider = ErrorMessageProvider();
+  final ErrorMessageProvider _errorMessageProvider;
 
   // for On-Demand Media, we queue up next song in the podcast so use can click "next"
   List<MediaItem> _queue = [];
@@ -14,7 +14,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
   Stream<Duration> get positionStream => _player.positionStream;
   
   // Here we add a bunch of listeners to the _player to broadcast loading, metadata changes to the rest of the app
-  AudioPlayerHandler() {
+  AudioPlayerHandler(this._errorMessageProvider) {
 
     // listen to state changes, buffering, etc. (from playbackEventStream)
     _player.playbackEventStream.listen((event) {

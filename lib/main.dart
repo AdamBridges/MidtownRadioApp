@@ -18,6 +18,7 @@ import 'package:provider/provider.dart';
 // Initiate singleton for app access to system audio controls
 late AudioHandler audioHandler;
 late AudioPlayerHandler audioPlayerHandler;
+final ErrorMessageProvider errorMessageProvider = ErrorMessageProvider();
 void main() async {
   // Ensure that plugin services are initialized
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,7 +27,7 @@ void main() async {
 
   OnDemand.primeCache(); 
 
-  audioPlayerHandler = AudioPlayerHandler();
+  audioPlayerHandler = AudioPlayerHandler(errorMessageProvider);
   
   audioHandler = await AudioService.init(
     builder: () => audioPlayerHandler,
@@ -50,7 +51,7 @@ void main() async {
   ]);
   
   runApp(ChangeNotifierProvider(
-    create: (context) => ErrorMessageProvider(),
+    create: (context) => errorMessageProvider,
     child: MidtownRadioApp(settingsController: settingsController)
     ));
 
