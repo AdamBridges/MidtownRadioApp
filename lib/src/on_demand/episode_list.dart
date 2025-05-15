@@ -155,6 +155,10 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
               ),
             ),
           ),
+          if (widget.show.description != null && widget.show.description!.isNotEmpty) SliverToBoxAdapter(child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Center(child: Text(widget.show.description!)),
+          )),
           _episodes.isEmpty
               ? SliverFillRemaining(
                   child: Center(child: Text("No episodes found for ${widget.show.title}.")))
