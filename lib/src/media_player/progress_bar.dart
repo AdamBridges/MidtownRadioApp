@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:ctwr_midtown_radio_app/main.dart';
+import 'package:ctwr_midtown_radio_app/src/media_player/format_duration.dart';
 
 // Progress/seek bar for on demand audio
 
@@ -26,21 +27,6 @@ class _ProgressBarState extends State<ProgressBar> {
 
   // to detect when media item changes to reset drag state
   String? _currentMediaItemId;
-
-  // helper to format times on endpoints of slider
-  String _formatDuration(Duration? duration) {
-    if (duration == null) return '--:--';
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-
-    if (hours > 0) {
-      return '$hours:${twoDigits(minutes)}:${twoDigits(seconds)}';
-    } else {
-      return '${twoDigits(minutes)}:${twoDigits(seconds)}';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -156,11 +142,11 @@ class _ProgressBarState extends State<ProgressBar> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          _formatDuration(positionToDisplay),
+                          formatDuration(positionToDisplay),
                           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7)),
                         ),
                         Text(
-                          _formatDuration(totalDuration),
+                          formatDuration(totalDuration),
                           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7)),
                         ),
                       ],
