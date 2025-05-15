@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="ctwr_midtown_radio_app"
+        android:label="Midtown Radio"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity
