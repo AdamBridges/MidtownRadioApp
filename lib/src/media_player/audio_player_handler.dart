@@ -8,6 +8,8 @@ class AudioPlayerHandler extends BaseAudioHandler {
   // for On-Demand Media, we queue up next song in the podcast so use can click "next"
   List<MediaItem> _queue = [];
   int _currentIndex = -1;
+
+  Stream<Duration> get positionStream => _player.positionStream;
   
   // Here we add a bunch of listeners to the _player to broadcast loading, metadata changes to the rest of the app
   AudioPlayerHandler() {
@@ -19,17 +21,14 @@ class AudioPlayerHandler extends BaseAudioHandler {
       // get current media item for context
       final currentMediaItem = mediaItem.value;
 
-      // Inside AudioPlayerHandler constructor, _player.playbackEventStream.listen:
-      if (processingState == ProcessingState.completed) {
-        debugPrint("AudioPlayerHandler: Item COMPLETED by just_audio: '${currentMediaItem?.title}'");
-        debugPrint("  >> At actual player position: ${_player.position}"); // Get current position directly from player
-        debugPrint("  >> event.updatePosition was: ${event.updatePosition}");
-        debugPrint("  >> MediaItem perceived duration was: ${currentMediaItem?.duration}");
-        debugPrint("  >> just_audio _player.duration (last known): ${_player.duration}");
-        debugPrint("  >> CurrentIndex: $_currentIndex, Queue Length: ${_queue.length}");
-        // ... rest of your logic (Future.microtask(()=> stop()) etc.)
-      }
-
+      // if (processingState == ProcessingState.completed) {
+      //   debugPrint("AudioPlayerHandler: Item COMPLETED by just_audio: '${currentMediaItem?.title}'");
+      //   debugPrint("  >> At actual player position: ${_player.position}"); // Get current position directly from player
+      //   debugPrint("  >> event.updatePosition was: ${event.updatePosition}");
+      //   debugPrint("  >> MediaItem perceived duration was: ${currentMediaItem?.duration}");
+      //   debugPrint("  >> just_audio _player.duration (last known): ${_player.duration}");
+      //   debugPrint("  >> CurrentIndex: $_currentIndex, Queue Length: ${_queue.length}");
+      // }
 
       playbackState.add(playbackState.value.copyWith(
         controls: _getControls(playing, processingState, currentMediaItem),

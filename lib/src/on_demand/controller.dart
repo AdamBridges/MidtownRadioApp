@@ -272,8 +272,27 @@ class OnDemand {
   }
 }
 
+/*
+We want the app to fetch streams from an external source which can be updated easily, 
+so that when a podcast is added with a new RSS feed, the app updates.
+Here is how we are getting the RSS streams to parse:
+
+1. We have the hardcoded list of URLs for the podcasts that we already know of. 
+   This is a fallback -- it wont update automatically if a new podcast is added.
+
+2. We fetch a text file from an external source containing all current RSS URL's.
+   We parse it for the URL's, and any new ones not already in the hardcoded list are added to our streams
+
+We could maybe discuss persisting any newly found URL's onto the users device using Flutter shared_preferences or similar - though I don't see much benefit in this.
+We also might as well update the hardcoded list anytime we would have had to push an update anyways for another reason - but I think theres no point to making an update solely to update the list.
+
+Currently for testing, the file is on GitHub, but the plan is that it is on the existing Wix website for easy updating and more centralization.
+
+One last thing to consider -- since we are fetching the RSS URLS and then the feeds themselves, the fetch is a bit slower.
+To mitigate this, the getStreams could (and maybe should) run as soon as the app opens, and then cache the URL's
+*/
 class _Streams {
-  static const String feedsUrl = 'https://raw.githubusercontent.com/CivicTechWR/MidtownRadioApp/cw-dynamic-feeds/assets/tempfeeds.txt';
+  static const String feedsUrl = 'https://raw.githubusercontent.com/CivicTechWR/MidtownRadioApp/master/assets/tempfeeds.txt';
   
   static const List<String> _fallback = [
     'https://feeds.transistor.fm/midtown-radio',

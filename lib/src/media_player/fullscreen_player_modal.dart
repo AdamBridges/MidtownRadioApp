@@ -1,6 +1,7 @@
 // lib/src/media_player/fullscreen_player_modal.dart
 // import 'dart:async';
 //import 'dart:ui'; // For ImageFilter
+import 'package:ctwr_midtown_radio_app/src/media_player/progress_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:ctwr_midtown_radio_app/main.dart';
@@ -14,23 +15,6 @@ class FullScreenPlayerModal extends StatefulWidget {
 }
 
 class _FullScreenPlayerModalState extends State<FullScreenPlayerModal> {
-  bool _isDraggingSlider = false;
-  double? _sliderDragValue;
-  String? _previousMediaItemId;
-
-  String _formatDuration(Duration? duration) {
-    if (duration == null) return '--:--';
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-
-    if (hours > 0) {
-      return '$hours:${twoDigits(minutes)}:${twoDigits(seconds)}';
-    } else {
-      return '${twoDigits(minutes)}:${twoDigits(seconds)}';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,20 +27,6 @@ class _FullScreenPlayerModalState extends State<FullScreenPlayerModal> {
 
       builder: (context, mediaItemSnapshot) {
         final mediaItem = mediaItemSnapshot.data;
-        final currentMediaItemId = mediaItem?.id;
-
-        // if we change what were playing, reset slider
-        if (currentMediaItemId != _previousMediaItemId) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && _isDraggingSlider) {
-              setState(() {
-                _isDraggingSlider = false;
-                _sliderDragValue = null;
-              });
-            }
-          });
-          _previousMediaItemId = currentMediaItemId;
-        }
 
         if (mediaItem == null) {
           return SizedBox(
@@ -83,24 +53,6 @@ class _FullScreenPlayerModalState extends State<FullScreenPlayerModal> {
             final playbackState = playbackStateSnapshot.data;
             final isPlaying = playbackState?.playing ?? false;
             final processingState = playbackState?.processingState ?? AudioProcessingState.idle;
-            final Duration streamPosition = playbackState?.position ?? Duration.zero;
-            final Duration? totalDuration = mediaItem.duration;
-
-
-            // variables for slider and time to display - display position
-            // but if user is seeking, display the position they have seeked to
-
-            final double currentSliderValue = _isDraggingSlider
-                ? _sliderDragValue!
-                : (streamPosition.inMilliseconds.toDouble().clamp(
-                    0.0,
-                    totalDuration?.inMilliseconds.toDouble() ?? double.maxFinite));
-            
-            final double maxSliderValue = totalDuration?.inMilliseconds.toDouble() ?? 1.0;
-
-            final Duration positionToDisplay = _isDraggingSlider
-                ? Duration(milliseconds: _sliderDragValue!.round())
-                : streamPosition;
 
             return ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20.0)),
@@ -192,7 +144,7 @@ class _FullScreenPlayerModalState extends State<FullScreenPlayerModal> {
                             padding: const EdgeInsets.only(top: 4.0),
                             child: Text(
                               displayArtist, // Shows ICY artist for live
-                              style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7)),
+                              style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurface.withAlpha((0.7 * 255).round())),
                               textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -201,44 +153,11 @@ class _FullScreenPlayerModalState extends State<FullScreenPlayerModal> {
                 
                         // only show seek bar if ondemand
                         if (!isLiveStream) 
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SliderTheme(
-                                data: SliderTheme.of(context).copyWith(
-                                  trackHeight: 3.0,
-                                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7.0),
-                                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 15.0),
-                                  activeTrackColor: theme.colorScheme.primary,
-                                  inactiveTrackColor: theme.colorScheme.onSurface.withAlpha((0.2 * 256).round()),
-                                  thumbColor: theme.colorScheme.primary,
-                                  overlayColor: theme.colorScheme.primary.withAlpha((0.2 * 256).round()),
-                                ),
-                                child: Slider(
-                                  value: currentSliderValue.isNaN || currentSliderValue.isInfinite ? 0.0 : currentSliderValue,
-                                  min: 0.0, max: maxSliderValue > 0 ? maxSliderValue : 1.0,
-                                  onChangeStart: totalDuration != null ? (value) { setState(() { _isDraggingSlider = true; _sliderDragValue = value; }); } : null,
-                                  onChanged: totalDuration != null ? (value) { setState(() { _sliderDragValue = value; }); } : null,
-                                  onChangeEnd: totalDuration != null ? (value) {
-                                    audioHandler.seek(Duration(milliseconds: value.round()));
-                                    if (mounted) { setState(() { _isDraggingSlider = false; }); }
-                                  } : null,
-                                ),
-                              ),
-
-                              // show current(or seeked) time, total time
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(_formatDuration(positionToDisplay), style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7))),
-                                    Text(_formatDuration(totalDuration), style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7))),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          )
+                          ProgressBar(
+                              showTimestamps: true,
+                              trackHeight: 3.0,
+                              thumbRadius: 7.0,
+                            )
 
                         // for Live Streams, show a "LIVE" indicator
                         else 
