@@ -1,9 +1,11 @@
+import 'package:ctwr_midtown_radio_app/error_message.dart';
 import 'package:flutter/foundation.dart'; // For debugPrint
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_service/audio_service.dart';
 
 class AudioPlayerHandler extends BaseAudioHandler {
   final AudioPlayer _player = AudioPlayer();
+  final ErrorMessageProvider _errorMessageProvider = ErrorMessageProvider();
 
   // for On-Demand Media, we queue up next song in the podcast so use can click "next"
   List<MediaItem> _queue = [];
@@ -56,6 +58,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
     }, 
     
     onError: (Object e, StackTrace stackTrace) {
+      _errorMessageProvider.setErrorMessage("Player error: $e");
       playbackState.add(playbackState.value.copyWith(
         processingState: AudioProcessingState.error,
         playing: false,

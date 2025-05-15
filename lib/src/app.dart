@@ -1,3 +1,4 @@
+import 'package:ctwr_midtown_radio_app/error_message.dart';
 import 'package:ctwr_midtown_radio_app/main.dart';
 // import 'package:ctwr_midtown_radio_app/src/on_demand/episode_list.dart';
 import 'package:ctwr_midtown_radio_app/src/settings/controller.dart';
@@ -11,6 +12,7 @@ import 'package:ctwr_midtown_radio_app/src/home/view.dart';
 import 'package:ctwr_midtown_radio_app/src/listen_live/view.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/view.dart';
 import 'package:audio_service/audio_service.dart';
+import 'package:provider/provider.dart';
 
 class MidtownRadioApp extends StatelessWidget {
   const MidtownRadioApp({
@@ -28,9 +30,9 @@ class MidtownRadioApp extends StatelessWidget {
 
 class MidtownRadioStateful extends StatefulWidget {
   const MidtownRadioStateful({
-    Key? key,
+    super.key,
     required this.settingsController
-  }): super(key: key);
+  });
 
   final SettingsController settingsController;
 
@@ -51,6 +53,20 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
             navigatorKey: navigatorKey,
 
             builder: (context, child) => Scaffold(
+              bottomSheet: Consumer<ErrorMessageProvider>(
+                builder: (context,error,child)=>SizedBox(
+                  height: error.errorMessage.isNotEmpty ? 100 : 0,
+                  child: Row(
+                    children: [
+                      Text(error.errorMessage),
+                      ElevatedButton(onPressed: ()=>{
+                        debugPrint("Error message dismissed"),
+                        error.clearErrorMessage()
+                        }, child: Text("Close")),
+                    ],
+                  ),
+                ),
+              ),
                 body: child,
                 // Changed to nav bar so that body contents don't end up behind it
                 bottomNavigationBar: ValueListenableBuilder<bool>(
@@ -67,10 +83,10 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
                           final playbackState = stateSnapshot.data;
                           final processingState = playbackState?.processingState ??
                               AudioProcessingState.idle;
-
+            
                           final showPlayer = mediaItem != null &&
                               processingState != AudioProcessingState.idle;
-
+            
                           if (!showPlayer) return const SizedBox.shrink();
                           return PlayerWidget(
                             navigatorKey: navigatorKey,
