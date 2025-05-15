@@ -355,7 +355,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
     if (_player.playing) return;
 
     // Fallback to existing play logic for on-demand, or if live stream wasn't prepared
-    debugPrint("AudioPlayerHandler: Standard play call.");
+    // debugPrint("AudioPlayerHandler: Standard play call.");
     if (_currentIndex != -1 && _currentIndex < _queue.length) {
       if (_player.audioSource != null) {
         await _player.play();
