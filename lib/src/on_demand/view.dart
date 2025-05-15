@@ -132,7 +132,7 @@ class _OnDemandPageState extends State<OnDemandPage> {
                                 Text(
                                   show.title,
                                   style: TextStyle(fontSize: 16,fontWeight: FontWeight.w900),
-                                  maxLines: 2,
+                                  maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 4),
