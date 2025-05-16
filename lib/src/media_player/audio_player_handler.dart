@@ -88,6 +88,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
     // ICY metadata holds info like the artist, song title and current radio programming in the LIVE broadcast
     // this is encoded in the livestream, so we want to display this to the user so they can see the name of the song on the live radio
     _player.icyMetadataStream.listen((icyMetadata) {
+      // debugPrint("${icyMetadata?.info?.title}");
       // Get ICY metadata - in the form 'session - artist - song title'
       // Where 'session' is something like "slow music hour" -- the radio station's programming for that time
       final rawMetaData = icyMetadata?.info?.title;
@@ -111,8 +112,8 @@ class AudioPlayerHandler extends BaseAudioHandler {
       // I noticed sometimes it just is "Airtime - offline" if theres not metadata
       // In this case, I think its nicer to show Midtown Radio KW"
       // this is the default, if not ICY data is given to Airtime in this case, I would rather show "Midtwon Radio KW" than "Airtime - offline"
-      if (rawMetaData.trim().toLowerCase() == 'Airtime - offline'){
-        session = "radio haha";
+      if (rawMetaData.contains('Airtime - offline')){
+        session = "";
         artist = "";
         title = "Midtown Radio KW";
 

@@ -2,6 +2,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:ctwr_midtown_radio_app/main.dart';
 import 'package:flutter/material.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/controller.dart';
+import 'package:flutter/rendering.dart';
 /*
 when refreshing from exercise page:
 ══╡ EXCEPTION CAUGHT BY FLUTTER FRAMEWORK ╞═════════════════════════════════════════════════════════
@@ -112,33 +113,27 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
       // Increase toolbar height to accommodate two lines.
       currentToolbarHeight =  (appBarTitleMaxLines) * textScaleFactor * 16 + topPad;
     }
-
     return Scaffold(
       body: CustomScrollView(
         controller: _scrollController,
         slivers: <Widget>[
           SliverAppBar(
+            
             toolbarHeight: currentToolbarHeight,
 
             // back button -- white on dark to always contrast with whatever image is behind it
-            leading: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: InkWell(
-                onTap: () => Navigator.of(context).pop(),
-                customBorder: const CircleBorder(),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withAlpha((0.7 * 256).round()),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    
-                    Icons.chevron_left,
-                    color: Colors.white,
-                    size: 30,
-                  ),
+            leading: IconButton(
+              style: ButtonStyle(
+                fixedSize: WidgetStateProperty.all(
+                  Size(48, 48),
+                ),
+                backgroundColor: WidgetStateProperty.all(
+                  Colors.black.withAlpha((0.7 * 256).round()),
                 ),
               ),
+              icon: const Icon(Icons.chevron_left, size: 30, color: Colors.white),
+              tooltip: 'Back to Shows',
+              onPressed: () => Navigator.of(context).pop(),
             ),
 
             expandedHeight: sliverExpandedHeight,
@@ -159,29 +154,35 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
                 children: [
                   // this is the outline on the title -- only shows if title is 2 lines tall
                   if (appBarTitleMaxLines > 1)
-                    Text(
+                    ExcludeSemantics(
+                      child: Text(
+                        widget.show.title,
+                        textAlign: TextAlign.center,
+                        maxLines: appBarTitleMaxLines,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          // fontsize scales automatically if user enables OS-side text scaling
+                          fontSize: 16.0,
+                          fontWeight: FontWeight.w600,
+                          foreground: Paint()
+                            ..style = PaintingStyle.stroke
+                            ..strokeWidth = 2 * textScaleFactor
+                            ..color = Colors.black.withAlpha((0.8 * 255).round()),
+                        ),
+                      ),
+                    ),
+              
+                  // the actual text title -- shows always
+                  Semantics(
+                    label: widget.show.title,
+                    header: true,
+                    child: Text(
                       widget.show.title,
+                      style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600, color: Colors.white),
                       textAlign: TextAlign.center,
                       maxLines: appBarTitleMaxLines,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        // fontsize scales automatically if user enables OS-side text scaling
-                        fontSize: 16.0,
-                        fontWeight: FontWeight.w600,
-                        foreground: Paint()
-                          ..style = PaintingStyle.stroke
-                          ..strokeWidth = 2 * textScaleFactor
-                          ..color = Colors.black.withAlpha((0.8 * 255).round()),
-                      ),
                     ),
-
-                  // the actual text title -- shows always
-                  Text(
-                    widget.show.title,
-                    style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600, color: Colors.white),
-                    textAlign: TextAlign.center,
-                    maxLines: appBarTitleMaxLines,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -193,45 +194,55 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.network(
-                      widget.show.imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey),
-                    ),
-                    // gradient from bottom so that title contrasts well even on light images
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withAlpha((0.4 * 255).round()),
-                            Colors.black.withAlpha((0.7 * 255).round()),
-                            Colors.black.withAlpha((0.8 * 255).round()),
-                          ],
-                          stops: const [
-                            0.5,
-                            0.7,
-                            0.85,
-                            1.0
-                          ],
-                        )
+                    Semantics(
+                      label: "Album art for ${widget.show.title}",
+                      image: true,
+                      child: Image.network(
+                        excludeFromSemantics: true,
+                        widget.show.imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey),
                       ),
                     ),
-
+                    // gradient from bottom so that title contrasts well even on light images
+                    ExcludeSemantics(
+                      child: Container(
+                        
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withAlpha((0.4 * 255).round()),
+                              Colors.black.withAlpha((0.7 * 255).round()),
+                              Colors.black.withAlpha((0.8 * 255).round()),
+                            ],
+                            stops: const [
+                              0.5,
+                              0.7,
+                              0.85,
+                              1.0
+                            ],
+                          )
+                        ),
+                      ),
+                    ),
+                
                     // gradient to contrast OS buttons at top with so its not white on white
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withAlpha((0.7 * 255).round()),
-                            Colors.black.withAlpha((0.5 * 255).round()),
-                            Colors.transparent,
-                          ],
-                          stops: const [0.0, 0.1, 0.2],
+                    ExcludeSemantics(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withAlpha((0.7 * 255).round()),
+                              Colors.black.withAlpha((0.5 * 255).round()),
+                              Colors.transparent,
+                            ],
+                            stops: const [0.0, 0.1, 0.2],
+                          ),
                         ),
                       ),
                     ),
@@ -372,6 +383,7 @@ class _EpisodeListTile extends StatelessWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
+                                      semanticLabel: "Published",
                                       Icons.calendar_today_outlined, 
                                       size: scaledMetadataIconSize, 
                                       color: metadataColor
@@ -398,6 +410,7 @@ class _EpisodeListTile extends StatelessWidget {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(
+                                        semanticLabel: "Duration",
                                         Icons.timer_outlined, 
                                         size: scaledMetadataIconSize, 
                                         color: metadataColor

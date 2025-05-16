@@ -65,34 +65,20 @@ class _FullScreenPlayerModalState extends State<FullScreenPlayerModal> {
                   padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
                   child: Column(
                     children: <Widget>[
-                      // down (close) button
-                      // tappable area (48x48) extends past visible button (30x30) to meet min tap size accessibility standard
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: InkWell(
-                          onTap: () => Navigator.of(context).pop(),
-                          customBorder: const CircleBorder(),
-                          // tappable area
-                          child: SizedBox(
-                            width: 48,
-                            height: 48,
-                            child: Center(
-                              // visible button
-                              child: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withAlpha((0.7 * 255).round()),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.keyboard_arrow_down,
-                                  color: Colors.white,
-                                  size: 30,
-                                ),
-                              ),
+                        child: IconButton(
+                          style: ButtonStyle(
+                            fixedSize: WidgetStateProperty.all(
+                              Size(48, 48),
+                            ),
+                            backgroundColor: WidgetStateProperty.all(
+                              Colors.black.withAlpha((0.7 * 256).round()),
                             ),
                           ),
+                          icon: const Icon(Icons.keyboard_arrow_down, size: 30, color: Colors.white),
+                          tooltip: 'Minimize player',
+                          onPressed: () => Navigator.of(context).pop(),
                         ),
                       ),
                                      
@@ -110,8 +96,11 @@ class _FullScreenPlayerModalState extends State<FullScreenPlayerModal> {
                                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                   children: <Widget>[
                                     // Album art
-                                    Hero(
-                                      tag: mediaItem.id,
+                                    Semantics(
+                                      image: true,
+                                      label: mediaItem.artUri != null 
+                                          ? "Album art for ${mediaItem.album ?? 'current track'}" 
+                                          : "Midtown Radio Microphone Logo",
                                       child: Container(
                                         width: screenWidth * 0.65,
                                         height: screenWidth * 0.65,
@@ -127,7 +116,10 @@ class _FullScreenPlayerModalState extends State<FullScreenPlayerModal> {
                                           ],
                                           image: mediaItem.artUri != null
                                           ? DecorationImage(
-                                            image: NetworkImage(mediaItem.artUri.toString()),
+                                            
+                                            image: NetworkImage(
+                                              mediaItem.artUri.toString(),
+                                            ),
                                             fit: BoxFit.cover,
                                           )
                                           : null,
@@ -188,7 +180,7 @@ class _FullScreenPlayerModalState extends State<FullScreenPlayerModal> {
                         ProgressBar(
                             showTimestamps: true,
                             trackHeight: 3.0,
-                            thumbRadius: 7.0,
+                            //thumbRadius: 7.0,
                           )
                       else 
                         Padding(
@@ -222,6 +214,7 @@ class _FullScreenPlayerModalState extends State<FullScreenPlayerModal> {
                               builder: (context, snapshot) {
                                 final bool canSkipPrevious = snapshot.data?.controls.any((control) => control == MediaControl.skipToPrevious) ?? false;
                                 return IconButton(
+                                  tooltip: "Skip to Previous Track",
                                   icon: const Icon(Icons.skip_previous), iconSize: 42,
                                   color: canSkipPrevious ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withAlpha((0.3 * 255).round()),
                                   onPressed: canSkipPrevious ? audioHandler.skipToPrevious : null,
@@ -260,6 +253,7 @@ class _FullScreenPlayerModalState extends State<FullScreenPlayerModal> {
                                 //debugPrint("controls: ${snapshot.data?.controls.toString()}");
                                 final bool canSkipNext = snapshot.data?.controls.any((control) => control == MediaControl.skipToNext) ?? false;
                                 return IconButton(
+                                  tooltip: "Skip to Next Track",
                                   icon: const Icon(Icons.skip_next), iconSize: 42,
                                   color: canSkipNext ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withAlpha((0.3 * 255).round()),
                                   onPressed: canSkipNext ? audioHandler.skipToNext : null,

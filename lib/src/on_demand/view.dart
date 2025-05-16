@@ -62,7 +62,7 @@ class _OnDemandPageState extends State<OnDemandPage> {
         future: _onDemandFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator(semanticsLabel: "Loading On Demand Shows.",));
           } else if (snapshot.hasError) {
             return Center(child: Text("An unexpected error has occured. Please try again later."));
           } else if (!snapshot.hasData || snapshot.data!.shows.isEmpty) {
@@ -93,84 +93,89 @@ class _OnDemandPageState extends State<OnDemandPage> {
                         ),
                       );
                     },
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
-                            width: 80,
-                            height: 80,
-                            child: Hero(
-                              tag: heroTag,
-                              child: Container( // This Container will apply the border and clip its child
-                                // clipBehavior: Clip.antiAlias, // Clips the Image.network to the borderRadius
-                                // decoration: BoxDecoration(
-                                //   borderRadius: BorderRadius.circular(12.0), // Rounds the corners of the border and image
-                                //   border: Border.all(
-                                //     //color: (Theme.of(context).brightness == Brightness.dark) ?Color.fromRGBO(23, 204, 204, 1):Color(0xff00989d),
-                                //     color: const Color(0xFFf05959),
-                                //     width: 4.0, // Outline thickness
-                                //   ),
-                                // ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8.0),
-                                  child: Image.network(
-                                    show.imageUrl,
-                                    fit: BoxFit.cover,
-                                    width: 80, // Ensure image tries to fill
-                                    height: 80,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        color: Colors.grey[200],
-                                        child: Icon(Icons.image_not_supported_outlined, size: 30, color: Colors.grey[400]),
-                                      );
-                                    },
-                                    loadingBuilder: (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return Center(
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2.0,
-                                          value: loadingProgress.expectedTotalBytes != null
-                                              ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                              : null,
-                                        ),
-                                      );
-                                    },
+                    child: Semantics(
+                      button: true,
+                      label: "View episodes of ${show.title}",
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 80,
+                              height: 80,
+                              child: Hero(
+                                tag: heroTag,
+                                child: Container( // This Container will apply the border and clip its child
+                                  // clipBehavior: Clip.antiAlias, // Clips the Image.network to the borderRadius
+                                  // decoration: BoxDecoration(
+                                  //   borderRadius: BorderRadius.circular(12.0), // Rounds the corners of the border and image
+                                  //   border: Border.all(
+                                  //     //color: (Theme.of(context).brightness == Brightness.dark) ?Color.fromRGBO(23, 204, 204, 1):Color(0xff00989d),
+                                  //     color: const Color(0xFFf05959),
+                                  //     width: 4.0, // Outline thickness
+                                  //   ),
+                                  // ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8.0),
+                                    child: Image.network(
+                                      semanticLabel: "Art cover for ${show.title}",
+                                      show.imageUrl,
+                                      fit: BoxFit.cover,
+                                      width: 80, // Ensure image tries to fill
+                                      height: 80,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return Container(
+                                          color: Colors.grey[200],
+                                          child: Icon(Icons.image_not_supported_outlined, size: 30, color: Colors.grey[400]),
+                                        );
+                                      },
+                                      loadingBuilder: (context, child, loadingProgress) {
+                                        if (loadingProgress == null) return child;
+                                        return Center(
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.0,
+                                            value: loadingProgress.expectedTotalBytes != null
+                                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                                : null,
+                                          ),
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  show.title,
-                                  style: TextStyle(fontSize: 16,fontWeight: FontWeight.w900),
-                                  maxLines: titleMaxLines,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                if (show.description != null && show.description!.isNotEmpty)
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
                                   Text(
-                                    show.description!,
-                                    maxLines: descriptionMaxLines,
+                                    show.title,
+                                    style: TextStyle(fontSize: 16,fontWeight: FontWeight.w900),
+                                    maxLines: titleMaxLines,
                                     overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context).textTheme.bodyMedium,
                                   ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Updated: ${_formatShowDisplayDate(show.sortablePublishDate, show.publishDate)}',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850], fontSize: 11),
-                                ),
-                              ],
+                                  const SizedBox(height: 4),
+                                  if (show.description != null && show.description!.isNotEmpty)
+                                    Text(
+                                      show.description!,
+                                      maxLines: descriptionMaxLines,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context).textTheme.bodyMedium,
+                                    ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Updated: ${_formatShowDisplayDate(show.sortablePublishDate, show.publishDate)}',
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850], fontSize: 11),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
