@@ -2,6 +2,7 @@ import 'package:ctwr_midtown_radio_app/error_message.dart';
 import 'package:ctwr_midtown_radio_app/main.dart';
 // import 'package:ctwr_midtown_radio_app/src/on_demand/episode_list.dart';
 import 'package:ctwr_midtown_radio_app/src/settings/controller.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -176,5 +177,17 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
         );
       }
       );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    FlutterError.onError = (FlutterErrorDetails details) {
+      errorMessageProvider.setErrorMessage(details.exceptionAsString());
+    };
+    PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+      errorMessageProvider.setErrorMessage(error.toString());
+      return true;
+    };
   }
 }
