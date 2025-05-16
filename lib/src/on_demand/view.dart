@@ -1,5 +1,3 @@
-// import 'package:audio_service/audio_service.dart';
-// import 'package:ctwr_midtown_radio_app/main.dart';
 import 'package:flutter/material.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/controller.dart';
 import 'package:intl/intl.dart';
@@ -37,6 +35,27 @@ class _OnDemandPageState extends State<OnDemandPage> {
 
   @override
   Widget build(BuildContext context) {
+
+    // Text scaling calculations -- if text is large we increase the number of rows it can take up
+    // so that it still displays enough info
+    final TextScaler textScaler = MediaQuery.of(context).textScaler;
+    final double textScaleFactor = textScaler.scale(1);
+
+    // Define dynamic maxLines based on textScaleFactor
+    int titleMaxLines = 1; 
+    if (textScaleFactor > 1.7) {
+      titleMaxLines = 3;
+    } else if (textScaleFactor > 1.3) {
+      titleMaxLines = 2;
+    }
+
+    int descriptionMaxLines = 2;
+    if (textScaleFactor > 1.7) {
+      descriptionMaxLines = 4;
+    } else if (textScaleFactor > 1.3) {
+      descriptionMaxLines = 3;
+    }
+
     return Scaffold(
       // List of shows using futurebuilder
       body: FutureBuilder<OnDemand>(
@@ -132,14 +151,14 @@ class _OnDemandPageState extends State<OnDemandPage> {
                                 Text(
                                   show.title,
                                   style: TextStyle(fontSize: 16,fontWeight: FontWeight.w900),
-                                  maxLines: 1,
+                                  maxLines: titleMaxLines,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 4),
                                 if (show.description != null && show.description!.isNotEmpty)
                                   Text(
                                     show.description!,
-                                    maxLines: 2,
+                                    maxLines: descriptionMaxLines,
                                     overflow: TextOverflow.ellipsis,
                                     style: Theme.of(context).textTheme.bodyMedium,
                                   ),

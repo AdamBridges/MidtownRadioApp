@@ -10,7 +10,7 @@ class ListenLivePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-        child: Column(
+      child: Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: <Widget>[
         StreamBuilder(
@@ -55,12 +55,9 @@ class ListenLivePage extends StatelessWidget {
                                     ),
                                     shape:BoxShape.circle,
                                     ),),
-                              Icon(audioPlayerHandler.isPlaying ? Icons.pause:Icons.play_arrow,size: 100, color: Color.fromRGBO(217, 217, 216, 0.9),)
+                              Icon((audioPlayerHandler.mediaItem.value?.isLive == true && audioPlayerHandler.isPlaying) ? Icons.pause:Icons.play_arrow,size: 100, color: Color.fromRGBO(217, 217, 216, 0.9),)
                               ]),
                           ),
-                          // Icon(Icons.radio, size: 100),
-                          // PlayerWidget(),
-                          // SizedBox(height: 20),
                           Padding(
                             padding: const EdgeInsets.only(top:20),
                             child: Image.asset('assets/images/we-play-local-music.png', width: 300,),
@@ -70,9 +67,8 @@ class ListenLivePage extends StatelessWidget {
                       ),
                     );
             }),
-        SizedBox(height: 20),
-        SizedBox(height: 10),
-        //PlayerWidget()
+        //SizedBox(height: 20),
+        //SizedBox(height: 10),
       ],
     ));
   }
