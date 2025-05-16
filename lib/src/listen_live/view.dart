@@ -15,77 +15,87 @@ class ListenLivePage extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: <Widget>[
         StreamBuilder(
-            stream: audioHandler.playbackState,
-            builder: (context, snapshot) {
+          stream: audioHandler.playbackState,
+          builder: (context, snapshot) {
 
-              final bool isPlayingLiveStream =
-                  audioPlayerHandler.mediaItem.value?.id == 'https://midtownradiokw.out.airtime.pro/midtownradiokw_a' &&
-                  audioPlayerHandler.isPlaying;
+            final bool isPlayingLiveStream =
+                audioPlayerHandler.mediaItem.value?.id == 'https://midtownradiokw.out.airtime.pro/midtownradiokw_a' &&
+                audioPlayerHandler.isPlaying;
 
-              final String buttonSemanticLabel = isPlayingLiveStream
-                  ? "Pause Live Radio"
-                  : "Play Live Radio";
+            final String buttonSemanticLabel = isPlayingLiveStream
+                ? "Pause Live Radio"
+                : "Play Live Radio";
 
-              final IconData currentIcon =
-                  isPlayingLiveStream ? Icons.pause : Icons.play_arrow;
-                  
-              return Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          ElevatedButton(
-                            onPressed: () {
-                              if (audioPlayerHandler.mediaItem.value?.id == 'https://midtownradiokw.out.airtime.pro/midtownradiokw_a') {
-                                if (audioPlayerHandler.isPlaying) {
-                                  audioPlayerHandler.pause();
-                                } else {
-                                  audioPlayerHandler.play();
-                                }
+            final IconData currentIcon =
+                isPlayingLiveStream ? Icons.pause : Icons.play_arrow;
+                
+            return Expanded(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        ElevatedButton(
+                          onPressed: () {
+                            if (audioPlayerHandler.mediaItem.value?.id == 'https://midtownradiokw.out.airtime.pro/midtownradiokw_a') {
+                              if (audioPlayerHandler.isPlaying) {
+                                audioPlayerHandler.pause();
                               } else {
-                                audioPlayerHandler.customSetStream(
-                                  MediaItem(
-                                    id: 'https://midtownradiokw.out.airtime.pro/midtownradiokw_a',
-                                    title: "Midtown Radio KW",
-                                    isLive: true
-                                ));
                                 audioPlayerHandler.play();
-                                Future.delayed(Duration(seconds: 7), () => debugDumpSemanticsTree(),);
                               }
-                              }, 
-                            style: ButtonStyle(
-                              fixedSize: WidgetStatePropertyAll(Size.fromRadius(100)),
-                              padding: WidgetStatePropertyAll(EdgeInsets.all(10))),
-                            child: Semantics(
-                              label: buttonSemanticLabel,
-                              button: true,
-                              excludeSemantics: true,
-                              child: Stack(alignment: AlignmentDirectional.center,children: [
-                                Container(
-                                  width: 150, 
-                                  height: 150, 
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [Color(0xff005c5f),Color(0xff00989d),Color(0xff33cccc)],
-                                      begin: Alignment.bottomCenter,
-                                      end:Alignment.topCenter,
-                                      ),
-                                      shape:BoxShape.circle,
-                                      ),),
-                                Icon(currentIcon,size: 100, color: Color.fromRGBO(217, 217, 216, 0.9),)
-                                ]),
-                            ),
+                            } else {
+                              audioPlayerHandler.customSetStream(
+                                MediaItem(
+                                  id: 'https://midtownradiokw.out.airtime.pro/midtownradiokw_a',
+                                  title: "Midtown Radio KW",
+                                  isLive: true
+                              ));
+                              audioPlayerHandler.play();
+                            }
+                            }, 
+                          style: ButtonStyle(
+                            fixedSize: WidgetStatePropertyAll(Size.fromRadius(100)),
+                            padding: WidgetStatePropertyAll(EdgeInsets.all(10))),
+                          child: Semantics(
+                            label: buttonSemanticLabel,
+                            button: true,
+                            excludeSemantics: true,
+                            child: Stack(alignment: AlignmentDirectional.center,children: [
+                              Container(
+                                width: 150, 
+                                height: 150, 
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [Color(0xff005c5f),Color(0xff00989d),Color(0xff33cccc)],
+                                    begin: Alignment.bottomCenter,
+                                    end:Alignment.topCenter,
+                                    ),
+                                    shape:BoxShape.circle,
+                                    ),),
+                              Icon(currentIcon,size: 100, color: Color.fromRGBO(217, 217, 216, 0.9),)
+                              ]),
                           ),
-                          Padding(
-                            padding: const EdgeInsets.only(top:20),
-                            child: Image.asset('assets/images/we-play-local-music.png', width: 300,),
-                          ),
-                          SizedBox(height: 10)
-                        ],
-                      ),
-                    );
-            }),
-        //SizedBox(height: 20),
-        //SizedBox(height: 10),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(top:20),
+                          child: Image.asset('assets/images/we-play-local-music.png', width: 300,),
+                        ),
+                        SizedBox(height: 10)
+                      ],
+                    ),
+                  ),
+
+                  if (audioPlayerHandler.mediaItem.value?.isLive == true)
+                    SizedBox(height: 36)
+                  else if (audioPlayerHandler.mediaItem.value == null)
+                    SizedBox(height: 127)
+                ],
+              ),
+            );
+          }
+        ),
       ],
     ));
   }

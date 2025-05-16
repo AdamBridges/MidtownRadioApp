@@ -99,51 +99,70 @@ class _ProgressBarState extends State<ProgressBar> {
                     trackShape: const RoundedRectSliderTrackShape(),
                     disabledActiveTrackColor: theme.colorScheme.primary
                   ),
-                  child: Semantics(
-                      label: "Progress bar",
-                      value: "${formatDuration(positionToDisplay)} of ${formatDuration(totalDuration)}",
-                      increasedValue: "Forward 10 seconds",
-                      decreasedValue: "Backward 10 seconds",
-                      onIncrease: () => audioHandler.seek(positionToDisplay + const Duration(seconds: 10)),
-                      onDecrease: () => audioHandler.seek(positionToDisplay - const Duration(seconds: 10)),
-                    child: Slider(
-                      value: displaySliderValue.isNaN || displaySliderValue.isInfinite
-                          ? 0.0
-                          : displaySliderValue.clamp(0.0, totalDurationMilliseconds),
-                      
-                      min: 0.0,
-                      max: totalDurationMilliseconds,
-                      
-                      // for updating state  -- called when user starts dragging
-                      onChangeStart: (totalDuration != null && (widget.thumbRadius >= 1.0 || widget.showTimestamps))
-                        ? (value) {
-                            setState(() {
-                              _isUserDraggingSlider = true;
-                              _userDragValueMilliseconds = value;
-                            });
-                          }
-                        : null,
-                      
-                      // for updating state  -- called when user ends dragging, picks their finger up
-                      onChangeEnd: (totalDuration != null && (widget.thumbRadius >= 1.0 || widget.showTimestamps))
-                        ? (value) {
-                            audioHandler.seek(Duration(milliseconds: value.round()));
-                            if (mounted) {
-                              setState(() {
-                                _isUserDraggingSlider = false;
-                              });
-                            }
-                          }
-                        : null,
-                    
-                      // called when user drags to new value
-                      onChanged: (totalDuration != null && (widget.thumbRadius >= 1.0 || widget.showTimestamps))
-                        ? (value) {
-                            setState(() {
-                              _userDragValueMilliseconds = value;
-                            });
-                          }
-                        : null,
+                  child : Semantics(
+                    label: "Progress bar",
+                    value: "${formatDuration(positionToDisplay)} of ${formatDuration(totalDuration)}",
+                    child: MergeSemantics(
+                      child: Actions(
+                        actions: <Type, Action<Intent>>{
+                          ActivateIntent: CallbackAction<ActivateIntent>(
+                            onInvoke: (ActivateIntent intent) {
+                              audioHandler.seek(positionToDisplay + const Duration(seconds: 10));
+                              return null;
+                            },
+                          ),
+                          ScrollIntent: CallbackAction<ScrollIntent>(
+                            onInvoke: (ScrollIntent intent) {
+                              if (intent.direction == AxisDirection.right) {
+                                audioHandler.seek(positionToDisplay + const Duration(seconds: 10));
+                              } else if (intent.direction == AxisDirection.left) {
+                                audioHandler.seek(positionToDisplay - const Duration(seconds: 10));
+                              }
+                              return null;
+                            },
+                          ),
+                        },
+                        child: Slider(
+                          value: displaySliderValue.isNaN || displaySliderValue.isInfinite
+                            ? 0.0
+                            : displaySliderValue.clamp(0.0, totalDurationMilliseconds),
+                        
+                          min: 0.0,
+                          max: totalDurationMilliseconds,
+                          
+                          // for updating state  -- called when user starts dragging
+                          onChangeStart: (totalDuration != null && (widget.thumbRadius >= 1.0 || widget.showTimestamps))
+                            ? (value) {
+                                setState(() {
+                                  _isUserDraggingSlider = true;
+                                  _userDragValueMilliseconds = value;
+                                });
+                              }
+                            : null,
+                          
+                          // for updating state  -- called when user ends dragging, picks their finger up
+                          onChangeEnd: (totalDuration != null && (widget.thumbRadius >= 1.0 || widget.showTimestamps))
+                            ? (value) {
+                                audioHandler.seek(Duration(milliseconds: value.round()));
+                                if (mounted) {
+                                  setState(() {
+                                    _isUserDraggingSlider = false;
+                                  });
+                                }
+                              }
+                            : null,
+                        
+                          // called when user drags to new value
+                          onChanged: (totalDuration != null && (widget.thumbRadius >= 1.0 || widget.showTimestamps))
+                            ? (value) {
+                                setState(() {
+                                  _userDragValueMilliseconds = value;
+                                });
+                              }
+                            : null,
+                        ),
+                                    
+                      ),
                     ),
                   ),
                 ),
