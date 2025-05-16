@@ -1,5 +1,6 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:ctwr_midtown_radio_app/main.dart';
+import 'package:ctwr_midtown_radio_app/src/on_demand/collapsable_text.dart';
 import 'package:flutter/material.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/controller.dart';
 
@@ -205,8 +206,6 @@ class _EpisodeListTile extends StatefulWidget {
 
 class _EpisodeListTileState extends State<_EpisodeListTile> {
 
-  bool showFullDescription = false;
-
   @override
   Widget build(BuildContext context) {
     // Use episode-specific image if available, otherwise fallback to show's image
@@ -243,9 +242,7 @@ class _EpisodeListTileState extends State<_EpisodeListTile> {
             );
           } : null,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(12.0, 12.0, 12.0, (
-              widget.episode.episodeDescription != null && widget.episode.episodeDescription!.length < 240
-            ) ? 12.0: 0),
+            padding: const EdgeInsets.all(12.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -325,27 +322,8 @@ class _EpisodeListTileState extends State<_EpisodeListTile> {
                 ),
                 if (widget.episode.episodeDescription != null && widget.episode.episodeDescription!.isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  Text(
-                    widget.episode.episodeDescription!,
-                    maxLines: showFullDescription ? null : 3,
-                    overflow: showFullDescription ? TextOverflow.visible : TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  CollapsableText(text: widget.episode.episodeDescription!, maxLines: 3, style: Theme.of(context).textTheme.bodySmall)
                 ],
-                if (widget.episode.episodeDescription != null && widget.episode.episodeDescription!.length >= 240) Center(
-                  child: ElevatedButton(
-                    style: ButtonStyle(
-                      shadowColor: WidgetStateProperty.all<Color>(Colors.transparent),
-                      padding: WidgetStateProperty.all<EdgeInsets>(const EdgeInsets.symmetric(horizontal: 10, vertical: 0)),
-                    ),
-                    onPressed: ()=>setState(() {
-                      if (widget.episode.episodeDescription != null && widget.episode.episodeDescription!.length < 240) {
-                        showFullDescription = true;
-                      } else {
-                        showFullDescription = !showFullDescription;
-                      }
-                  }), child: Text(showFullDescription ? "Show Less" : "Show More")),
-                ),
                 if (widget.episode.episodeStreamUrl.isEmpty)
                   Padding( 
                     padding: EdgeInsets.all(8),
