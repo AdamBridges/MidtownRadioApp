@@ -58,7 +58,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
     }, 
     
     onError: (Object e, StackTrace stackTrace) {
-      _errorMessageProvider.setErrorMessage("Player error: $e");
+      _errorMessageProvider.setErrorMessage("Audio Unavailable: $e");
       playbackState.add(playbackState.value.copyWith(
         processingState: AudioProcessingState.error,
         playing: false,
