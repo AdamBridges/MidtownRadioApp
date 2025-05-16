@@ -66,20 +66,31 @@ class _FullScreenPlayerModalState extends State<FullScreenPlayerModal> {
                   child: Column(
                     children: <Widget>[
                       // down (close) button
+                      // tappable area (48x48) extends past visible button (30x30) to meet min tap size accessibility standard
                       Align(
                         alignment: Alignment.centerLeft,
                         child: InkWell(
                           onTap: () => Navigator.of(context).pop(),
                           customBorder: const CircleBorder(),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.black.withAlpha((0.7 * 255).round()),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.keyboard_arrow_down,
-                              color: Colors.white,
-                              size: 30,
+                          // tappable area
+                          child: SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: Center(
+                              // visible button
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withAlpha((0.7 * 255).round()),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.keyboard_arrow_down,
+                                  color: Colors.white,
+                                  size: 30,
+                                ),
+                              ),
                             ),
                           ),
                         ),

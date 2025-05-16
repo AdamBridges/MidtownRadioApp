@@ -3,6 +3,7 @@ import 'package:ctwr_midtown_radio_app/src/layout/app_bar.dart'; // Assuming Mai
 import 'package:ctwr_midtown_radio_app/src/listen_live/view.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/view.dart';
 import 'package:ctwr_midtown_radio_app/src/layout/drawer.dart';
+import 'dart:math';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -53,7 +54,9 @@ class HomePage extends StatelessWidget {
     }
 
     const double tabVerticalPadding = 16.0;
-    double dynamicTabBarHeight = calculatedTextHeight + tabVerticalPadding;
+    // tppable area must have height of at least 48
+    double dynamicTabBarHeight = max(48, calculatedTextHeight + tabVerticalPadding);
+
     // debugPrint("Height: ${dynamicTabBarHeight}");
 
     return DefaultTabController(
