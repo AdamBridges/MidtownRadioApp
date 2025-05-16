@@ -13,6 +13,7 @@ import 'package:ctwr_midtown_radio_app/src/listen_live/view.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/view.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:provider/provider.dart';
+import 'package:ctwr_midtown_radio_app/src/open_url.dart';
 
 class MidtownRadioApp extends StatelessWidget {
   const MidtownRadioApp({
@@ -55,13 +56,48 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
             builder: (context, child) => Scaffold(
               bottomSheet: Consumer<ErrorMessageProvider>(
                 builder: (context,error,child)=> (error.errorMessage.isNotEmpty) ? (IntrinsicHeight(
-                  child: Row(
-                    children: [
-                      Expanded(child: Text(error.errorMessage.toString())),
-                      ElevatedButton(onPressed: ()=>{
-                        error.clearErrorMessage()
-                        }, child: Text("Close")),
-                    ],
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      children: [
+                        Expanded(child: Column(
+                          children: [
+                            Text(
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                              "Error"
+                              ),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom:8.0),
+                              child: Text(
+                                style: TextStyle(
+                                  overflow: TextOverflow.ellipsis,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                                error.errorMessage.toString(),
+                                maxLines: 3,
+                                ),
+                            ),
+                            Text("Want to help? Report this error at our site!")
+                          ],
+                        )),
+                        Column(
+                          children: [
+                            ElevatedButton(
+                              onPressed: ()=>{
+                              error.clearErrorMessage()
+                              }, child: Icon(Icons.close)),
+                            ElevatedButton(
+                              onPressed: ()=>{
+                              openUrl(true)
+                              }, child: Icon(Icons.mail)),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 )) : const SizedBox.shrink(),
               ),
