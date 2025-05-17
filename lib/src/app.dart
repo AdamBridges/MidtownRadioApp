@@ -110,7 +110,7 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
               builder: (BuildContext context) {
                 switch (routeSettings.name) {
                   case HomePage.routeName:
-                    return const HomePage();
+                    return  HomePage(controller: widget.settingsController);
                   case ListenLivePage.routeName:
                     return const ListenLivePage();
                   case OnDemandPage.routeName:

@@ -21,7 +21,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final settingsController = SettingsController(SettingsService());
-
+  await settingsController.loadSettings();
   OnDemand.primeCache(); 
 
   audioPlayerHandler = AudioPlayerHandler();

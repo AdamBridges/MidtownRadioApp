@@ -4,10 +4,16 @@ import 'package:ctwr_midtown_radio_app/src/listen_live/view.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/view.dart';
 import 'package:ctwr_midtown_radio_app/src/layout/drawer.dart';
 
+import '../settings/controller.dart';
+
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  const HomePage({
+    super.key,
+    required this.controller,
+  });
 
   static const routeName = '/';
+  final SettingsController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +21,12 @@ class HomePage extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: MainAppBar(),
-        drawer: const MainAppDrawer(),
+        drawer: MainAppDrawer(
+          themeMode: controller.themeMode,
+          onThemeChanged: (newThemeMode) {
+            controller.updateThemeMode(newThemeMode);
+          },
+        ),
         body: Column(
           children: [
             Stack(
@@ -24,7 +35,9 @@ class HomePage extends StatelessWidget {
                   height: 50,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
-                    children: List<Widget>.filled(1 /* The Number of Tabs */, Expanded(
+                    children: List<Widget>.filled(
+                      1 /* The Number of Tabs */,
+                      Expanded(
                         child: Container(
                           width: 10,
                           height: 10,
@@ -33,21 +46,28 @@ class HomePage extends StatelessWidget {
                             shape: BoxShape.circle,
                           ),
                         ),
-                      ),),
+                      ),
+                    ),
                   ),
                 ),
                 TabBar(
-                  labelColor: (Theme.of(context).brightness == Brightness.dark) ?Color.fromRGBO(23, 204, 204, 1):Color(0xff00989d),
-                  indicatorColor: (Theme.of(context).brightness == Brightness.dark) ? Colors.white:Colors.black,
+                  labelColor: (Theme.of(context).brightness == Brightness.dark)
+                      ? Color.fromRGBO(23, 204, 204, 1)
+                      : Color(0xff00989d),
+                  indicatorColor: (Theme.of(context).brightness == Brightness.dark)
+                      ? Colors.white
+                      : Colors.black,
                   tabs: [
                     Tab(
-                      child: Text("LISTEN LIVE",
-                      style: TextStyle(fontSize: 18,fontWeight: FontWeight.w900),
+                      child: Text(
+                        "LISTEN LIVE",
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
                       ),
                     ),
                     Tab(
-                      child: Text("ON DEMAND",
-                      style: TextStyle(fontSize: 18,fontWeight: FontWeight.w900),
+                      child: Text(
+                        "ON DEMAND",
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
                       ),
                     ),
                   ],
