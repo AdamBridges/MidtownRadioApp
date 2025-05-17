@@ -59,6 +59,7 @@ class _FullScreenPlayerModalState extends State<FullScreenPlayerModal> {
             return ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20.0)),
               child: Container(
+                
                 height: screenHeight,
                 color: theme.scaffoldBackgroundColor,
                 child: Padding(
@@ -263,7 +264,7 @@ class _FullScreenPlayerModalState extends State<FullScreenPlayerModal> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 72),
                     ],
                   ),
                 ),
