@@ -3,6 +3,7 @@ import 'package:dart_rss/dart_rss.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart'; // For debugPrint
 import 'dart:async';
+import 'package:ctwr_midtown_radio_app/src/media_player/format_duration.dart';
 
 // utility to strip HTML tags -- this could use a second look over
 String _stripHtmlIfNeeded(String? htmlText) {
@@ -162,26 +163,6 @@ class OnDemand {
     return null;
   }
 
-  String _formatDuration(String? itunesDuration) {
-    if (itunesDuration == null || itunesDuration.isEmpty) return '';
-    try {
-      final int totalSeconds = int.parse(itunesDuration);
-      final int hours = totalSeconds ~/ 3600;
-      final int minutes = (totalSeconds % 3600) ~/ 60;
-      final int seconds = totalSeconds % 60;
-      if (hours > 0) {
-        return "${hours.toString()}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}";
-      } else if (minutes > 0) {
-        return "${minutes.toString()}:${seconds.toString().padLeft(2, '0')}";
-      } else {
-        return "${seconds.toString()}s";
-      }
-    } catch (e) {
-      if (itunesDuration.contains(':')) return itunesDuration;
-      return '';
-    }
-  }
-
   // gets shows from RSS - this populates the 'shows' list for the current instance
   Future<void> _fetchShows() async {
     final List<String> streamUrls = await _Streams.getStreams();
@@ -228,7 +209,7 @@ class OnDemand {
               episodeStreamUrl: item.enclosure?.url ?? '',
               episodeDateForDisplay: episodeDisplayDate,
               episodeDateForSorting: episodeSortDate,
-              duration: _formatDuration(item.itunes?.duration.toString()),
+              duration: formatDuration(item.itunes?.duration),
             ));
           }
 

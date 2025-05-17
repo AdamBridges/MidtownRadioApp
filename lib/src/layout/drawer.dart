@@ -1,3 +1,4 @@
+import 'package:ctwr_midtown_radio_app/src/open_url.dart';
 import 'package:flutter/material.dart';
 
 import '../../widgets/animatedToggle.dart';
@@ -65,6 +66,13 @@ class MainAppDrawer extends StatelessWidget {
               },
             ),
           ),
+          ListTile(
+            leading: const Icon(Icons.link),
+            title: const Text("Our Site"),
+            onTap: () {
+              openUrl(false);
+            }
+          )
         ],
       ),
     );

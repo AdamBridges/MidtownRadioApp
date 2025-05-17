@@ -12,19 +12,24 @@ import 'package:ctwr_midtown_radio_app/src/settings/service.dart';
 import 'package:audio_service/audio_service.dart';
 
 import 'package:ctwr_midtown_radio_app/src/media_player/audio_player_handler.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 // Initiate singleton for app access to system audio controls
 late AudioHandler audioHandler;
 late AudioPlayerHandler audioPlayerHandler;
 void main() async {
   // Ensure that plugin services are initialized
-  WidgetsFlutterBinding.ensureInitialized();
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   final settingsController = SettingsController(SettingsService());
-  await settingsController.loadSettings();
+  await settingsController.loadSettings();  
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey();
+
+
   OnDemand.primeCache(); 
 
-  audioPlayerHandler = AudioPlayerHandler();
+  audioPlayerHandler = AudioPlayerHandler(navigatorKey: navigatorKey);
   
   audioHandler = await AudioService.init(
     builder: () => audioPlayerHandler,
@@ -47,6 +52,8 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
   
-  runApp(MidtownRadioApp(settingsController: settingsController));
-
+  runApp(MidtownRadioApp(
+    settingsController: settingsController,
+    navigatorKey: navigatorKey,
+  ));
 }

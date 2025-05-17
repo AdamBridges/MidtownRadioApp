@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:ctwr_midtown_radio_app/main.dart';
+import 'package:ctwr_midtown_radio_app/src/media_player/format_duration.dart';
 
 // Progress/seek bar for on demand audio
 
@@ -13,7 +14,7 @@ class ProgressBar extends StatefulWidget {
     super.key,
     this.showTimestamps = true,
     this.trackHeight = 3.0,
-    this.thumbRadius = 7.0,
+    this.thumbRadius = 8.0,
   });
 
   @override
@@ -26,21 +27,6 @@ class _ProgressBarState extends State<ProgressBar> {
 
   // to detect when media item changes to reset drag state
   String? _currentMediaItemId;
-
-  // helper to format times on endpoints of slider
-  String _formatDuration(Duration? duration) {
-    if (duration == null) return '--:--';
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-
-    if (hours > 0) {
-      return '$hours:${twoDigits(minutes)}:${twoDigits(seconds)}';
-    } else {
-      return '${twoDigits(minutes)}:${twoDigits(seconds)}';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,7 +85,12 @@ class _ProgressBarState extends State<ProgressBar> {
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: widget.trackHeight,
-                    thumbShape: RoundSliderThumbShape(enabledThumbRadius: widget.thumbRadius),
+                    thumbShape: _CustomThumbShape(
+                      visualRadius: widget.thumbRadius,
+                      // touch radius is always 16 (32 height) for accessibility, despite appearing smaller
+                      touchRadius: 16.0,
+                    ),
+
                     overlayShape: RoundSliderOverlayShape(overlayRadius: widget.thumbRadius + 8.0),
                     activeTrackColor: theme.colorScheme.primary,
                     inactiveTrackColor: theme.colorScheme.onSurface.withAlpha((0.2 * 255).round()),
@@ -108,44 +99,71 @@ class _ProgressBarState extends State<ProgressBar> {
                     trackShape: const RoundedRectSliderTrackShape(),
                     disabledActiveTrackColor: theme.colorScheme.primary
                   ),
-                  child: Slider(
-                    value: displaySliderValue.isNaN || displaySliderValue.isInfinite
-                        ? 0.0
-                        : displaySliderValue.clamp(0.0, totalDurationMilliseconds),
-                    
-                    min: 0.0,
-                    max: totalDurationMilliseconds,
-                    
-                    // for updating state  -- called when user starts dragging
-                    onChangeStart: (totalDuration != null && (widget.thumbRadius >= 1.0 || widget.showTimestamps))
-                      ? (value) {
-                          setState(() {
-                            _isUserDraggingSlider = true;
-                            _userDragValueMilliseconds = value;
-                          });
-                        }
-                      : null,
-                    
-                    // for updating state  -- called when user ends dragging, picks their finger up
-                    onChangeEnd: (totalDuration != null && (widget.thumbRadius >= 1.0 || widget.showTimestamps))
-                      ? (value) {
-                          audioHandler.seek(Duration(milliseconds: value.round()));
-                          if (mounted) {
-                            setState(() {
-                              _isUserDraggingSlider = false;
-                            });
-                          }
-                        }
-                      : null,
-
-                    // called when user drags to new value
-                    onChanged: (totalDuration != null && (widget.thumbRadius >= 1.0 || widget.showTimestamps))
-                      ? (value) {
-                          setState(() {
-                            _userDragValueMilliseconds = value;
-                          });
-                        }
-                      : null,
+                  child : Semantics(
+                    label: "Progress bar",
+                    value: "${formatDuration(positionToDisplay)} of ${formatDuration(totalDuration)}",
+                    child: MergeSemantics(
+                      child: Actions(
+                        actions: <Type, Action<Intent>>{
+                          ActivateIntent: CallbackAction<ActivateIntent>(
+                            onInvoke: (ActivateIntent intent) {
+                              audioHandler.seek(positionToDisplay + const Duration(seconds: 10));
+                              return null;
+                            },
+                          ),
+                          ScrollIntent: CallbackAction<ScrollIntent>(
+                            onInvoke: (ScrollIntent intent) {
+                              if (intent.direction == AxisDirection.right) {
+                                audioHandler.seek(positionToDisplay + const Duration(seconds: 10));
+                              } else if (intent.direction == AxisDirection.left) {
+                                audioHandler.seek(positionToDisplay - const Duration(seconds: 10));
+                              }
+                              return null;
+                            },
+                          ),
+                        },
+                        child: Slider(
+                          value: displaySliderValue.isNaN || displaySliderValue.isInfinite
+                            ? 0.0
+                            : displaySliderValue.clamp(0.0, totalDurationMilliseconds),
+                        
+                          min: 0.0,
+                          max: totalDurationMilliseconds,
+                          
+                          // for updating state  -- called when user starts dragging
+                          onChangeStart: (totalDuration != null && (widget.thumbRadius >= 1.0 || widget.showTimestamps))
+                            ? (value) {
+                                setState(() {
+                                  _isUserDraggingSlider = true;
+                                  _userDragValueMilliseconds = value;
+                                });
+                              }
+                            : null,
+                          
+                          // for updating state  -- called when user ends dragging, picks their finger up
+                          onChangeEnd: (totalDuration != null && (widget.thumbRadius >= 1.0 || widget.showTimestamps))
+                            ? (value) {
+                                audioHandler.seek(Duration(milliseconds: value.round()));
+                                if (mounted) {
+                                  setState(() {
+                                    _isUserDraggingSlider = false;
+                                  });
+                                }
+                              }
+                            : null,
+                        
+                          // called when user drags to new value
+                          onChanged: (totalDuration != null && (widget.thumbRadius >= 1.0 || widget.showTimestamps))
+                            ? (value) {
+                                setState(() {
+                                  _userDragValueMilliseconds = value;
+                                });
+                              }
+                            : null,
+                        ),
+                                    
+                      ),
+                    ),
                   ),
                 ),
 
@@ -156,11 +174,11 @@ class _ProgressBarState extends State<ProgressBar> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          _formatDuration(positionToDisplay),
+                          formatDuration(positionToDisplay),
                           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7)),
                         ),
                         Text(
-                          _formatDuration(totalDuration),
+                          formatDuration(totalDuration),
                           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7)),
                         ),
                       ],
@@ -172,5 +190,45 @@ class _ProgressBarState extends State<ProgressBar> {
         );
       },
     );
+  }
+}
+
+// allows us to have visitble tap area and a touchable tap area which is different
+class _CustomThumbShape extends SliderComponentShape {
+  final double visualRadius;
+  final double touchRadius;
+
+  const _CustomThumbShape({
+    required this.visualRadius,
+    required this.touchRadius,
+  });
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset center, {
+    required Animation<double> activationAnimation,
+    required Animation<double> enableAnimation,
+    required bool isDiscrete,
+    required TextPainter labelPainter,
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required TextDirection textDirection,
+    required double value,
+    required double textScaleFactor,
+    required Size sizeWithOverflow,
+  }) {
+    final Canvas canvas = context.canvas;
+    final Paint paint = Paint()
+      ..color = sliderTheme.thumbColor ?? Colors.blue
+      ..style = PaintingStyle.fill;
+
+    // Draw the actual visible thumb (4px)
+    canvas.drawCircle(center, visualRadius, paint);
+  }
+
+  @override
+  Size getPreferredSize(bool isEnabled, bool isDiscrete) {
+    return Size.fromRadius(touchRadius); // Larger hit test area
   }
 }
