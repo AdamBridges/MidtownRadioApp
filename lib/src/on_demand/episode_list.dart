@@ -103,7 +103,7 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
           SliverAppBar(
             
             toolbarHeight: currentToolbarHeight,
-
+      
             // back button -- white on dark to always contrast with whatever image is behind it
             leading: IconButton(
               style: ButtonStyle(
@@ -118,10 +118,10 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
               tooltip: 'Back to Shows',
               onPressed: () => Navigator.of(context).pop(),
             ),
-
+      
             expandedHeight: sliverExpandedHeight,
             floating: false,
-
+      
             // Title stays pinned at the top, even when scrolling down
             pinned: true, 
             snap: false,
@@ -169,7 +169,7 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
                   ),
                 ],
               ),
-
+      
               // background is image for the show
               // this gets animated from the preview image in the on demand page with "hero" effect
               background: Hero(

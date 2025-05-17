@@ -33,6 +33,13 @@ class _OnDemandPageState extends State<OnDemandPage> {
     return 'Date N/A';
   }
 
+  // force refresh data - used on pulldown
+  Future<void> _loadShows({bool forceRefresh = false}) async {
+    setState(() {
+      _onDemandFuture = OnDemand.create(forceRefresh: forceRefresh);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
 
@@ -58,70 +65,75 @@ class _OnDemandPageState extends State<OnDemandPage> {
 
     return Scaffold(
       // List of shows using futurebuilder
-      body: FutureBuilder<OnDemand>(
-        future: _onDemandFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(semanticsLabel: "Loading On Demand Shows.",));
-          } else if (snapshot.hasError) {
-            return Center(child: Text("An unexpected error has occured. Please try again later."));
-          } else if (!snapshot.hasData || snapshot.data!.shows.isEmpty) {
-            return Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: const Center(
-                child: Text(
-                  'No shows available. \nPlease ensure you are connected to the internet.', 
-                  textAlign: TextAlign.center, 
-                  style: TextStyle(fontSize: 18)
-                )
-              ),
-            );
-          } else {
-            final List<PodcastShow> shows = snapshot.data!.shows;
-            return ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              itemCount: shows.length,
-              itemBuilder: (context, index) {
-                final show = shows[index];
-                // Unique tag for hero animation. Using feedUrl as it should be unique per show.
-                final String heroTag = "showImage_${show.feedUrl}";
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
-                  elevation: 2.5,
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    // When user clicks on a show we take them to the page with all the episodes
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => EpisodeListPage(show: show, heroTag: heroTag),
+      body: RefreshIndicator(
+        onRefresh: () => _loadShows(forceRefresh: true),
+        child: FutureBuilder<OnDemand>(
+          future: _onDemandFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator(semanticsLabel: "Loading On Demand Shows.",));
+            } else if (snapshot.hasError) {
+              return Center(child: Text("An unexpected error has occured. Please try again later."));
+            } else if (!snapshot.hasData || snapshot.data!.shows.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'No shows available. \nPlease ensure you are connected to the internet.', 
+                        textAlign: TextAlign.center, 
+                        style: TextStyle(fontSize: 18)
+                      ),
+                      TextButton.icon(
+                        icon: Icon(Icons.refresh),
+                        label: Text(
+                          "Try Again",
+                          style: TextStyle(fontSize: 18)
                         ),
-                      );
-                    },
-                    child: Semantics(
-                      button: true,
-                      label: "View episodes of ${show.title}",
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: 80,
-                              height: 80,
-                              child: Hero(
-                                tag: heroTag,
-                                child: Container( // This Container will apply the border and clip its child
-                                  // clipBehavior: Clip.antiAlias, // Clips the Image.network to the borderRadius
-                                  // decoration: BoxDecoration(
-                                  //   borderRadius: BorderRadius.circular(12.0), // Rounds the corners of the border and image
-                                  //   border: Border.all(
-                                  //     //color: (Theme.of(context).brightness == Brightness.dark) ?Color.fromRGBO(23, 204, 204, 1):Color(0xff00989d),
-                                  //     color: const Color(0xFFf05959),
-                                  //     width: 4.0, // Outline thickness
-                                  //   ),
-                                  // ),
+                        onPressed: () => _loadShows(forceRefresh: true),
+                      )
+                    ],
+                  )
+                ),
+              );
+            } else {
+              final List<PodcastShow> shows = snapshot.data!.shows;
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                itemCount: shows.length,
+                itemBuilder: (context, index) {
+                  final show = shows[index];
+                  // Unique tag for hero animation. Using feedUrl as it should be unique per show.
+                  final String heroTag = "showImage_${show.feedUrl}";
+                  return Card(
+                    margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+                    elevation: 2.5,
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      // When user clicks on a show we take them to the page with all the episodes
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EpisodeListPage(show: show, heroTag: heroTag),
+                          ),
+                        );
+                      },
+                      child: Semantics(
+                        button: true,
+                        label: "View episodes of ${show.title}",
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                width: 80,
+                                height: 80,
+                                child: Hero(
+                                  tag: heroTag,
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(8.0),
                                     child: Image.network(
@@ -151,45 +163,45 @@ class _OnDemandPageState extends State<OnDemandPage> {
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    show.title,
-                                    style: TextStyle(fontSize: 16,fontWeight: FontWeight.w900),
-                                    maxLines: titleMaxLines,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  if (show.description != null && show.description!.isNotEmpty)
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
                                     Text(
-                                      show.description!,
-                                      maxLines: descriptionMaxLines,
+                                      show.title,
+                                      style: TextStyle(fontSize: 16,fontWeight: FontWeight.w900),
+                                      maxLines: titleMaxLines,
                                       overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(context).textTheme.bodyMedium,
                                     ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    'Updated: ${_formatShowDisplayDate(show.sortablePublishDate, show.publishDate)}',
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850], fontSize: 11),
-                                  ),
-                                ],
+                                    const SizedBox(height: 4),
+                                    if (show.description != null && show.description!.isNotEmpty)
+                                      Text(
+                                        show.description!,
+                                        maxLines: descriptionMaxLines,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context).textTheme.bodyMedium,
+                                      ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Updated: ${_formatShowDisplayDate(show.sortablePublishDate, show.publishDate)}',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850], fontSize: 11),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              },
-            );
-          }
-        },
+                  );
+                },
+              );
+            }
+          },
+        ),
       ),
     );
   }
