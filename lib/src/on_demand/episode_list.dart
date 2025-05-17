@@ -4,25 +4,7 @@ import 'package:ctwr_midtown_radio_app/src/on_demand/collapsable_text.dart';
 import 'package:flutter/material.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/controller.dart';
 import 'package:flutter/rendering.dart';
-/*
-when refreshing from exercise page:
-══╡ EXCEPTION CAUGHT BY FLUTTER FRAMEWORK ╞═════════════════════════════════════════════════════════
-The following assertion was thrown during a service extension callback for
-"ext.flutter.inspector.setSelectionById":
-Id does not exist.
 
-When the exception was thrown, this was the stack:
-#0      WidgetInspectorService.toObject (package:flutter/src/widgets/widget_inspector.dart:1463:7)
-#1      WidgetInspectorService.setSelectionById (package:flutter/src/widgets/widget_inspector.dart:1595:25)
-#2      WidgetInspectorService._registerServiceExtensionWithArg.<anonymous closure>
-(package:flutter/src/widgets/widget_inspector.dart:948:35)
-#3      BindingBase.registerServiceExtension.<anonymous closure>
-(package:flutter/src/foundation/binding.dart:960:32)
-<asynchronous suspension>
-#4      _runExtension.<anonymous closure> (dart:developer-patch/developer.dart:138:13)
-<asynchronous suspension>
-════════════════════════════════════════════════════════════════════════════════════════════════════
-*/
 /// This is the page that will show the list of episodes for a single show
 /// typically directed from [OnDemandPage] (in on_demand/view.dart)
 class EpisodeListPage extends StatefulWidget {
@@ -425,7 +407,7 @@ class _EpisodeListTileState extends State<_EpisodeListTile> {
                                 ),
                                 
                                 // duration Info (only if duration exists) - row keeps relevant icon with its text
-                                if (episode.duration != null && episode.duration!.isNotEmpty) ...[
+                                if (widget.episode.duration != null && widget.episode.duration!.isNotEmpty) ...[
                                   Text("•", style: TextStyle(color: metadataColor, fontSize: baseMetadataFontSize)),
 
                                   Row(

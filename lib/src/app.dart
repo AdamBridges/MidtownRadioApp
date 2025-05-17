@@ -61,7 +61,8 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
         listenable: widget.settingsController,
         builder: (BuildContext context, Widget? child) {
           return MaterialApp(
-            // Debugger: true,
+            // showSemanticsDebugger: true,
+
             debugShowCheckedModeBanner: false,
             navigatorKey: widget.navigatorKey,
 
