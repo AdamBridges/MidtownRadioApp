@@ -14,14 +14,13 @@ import 'package:ctwr_midtown_radio_app/src/listen_live/view.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/view.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
-import 'package:provider/provider.dart';
-import 'package:ctwr_midtown_radio_app/src/open_url.dart';
+
 
 class MidtownRadioApp extends StatelessWidget {
   const MidtownRadioApp({
     super.key,
     required this.settingsController,
-    required this.navigatorKey
+    required this.navigatorKey,
   });
 
   final SettingsController settingsController;
@@ -42,11 +41,12 @@ class MidtownRadioStateful extends StatefulWidget {
   const MidtownRadioStateful({
     super.key,
     required this.settingsController,
-    required this.navigatorKey
+    required this.navigatorKey,
   });
 
   final SettingsController settingsController;
   final GlobalKey<NavigatorState> navigatorKey;
+
 
 
   @override
@@ -63,6 +63,7 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
         listenable: widget.settingsController,
         builder: (BuildContext context, Widget? child) {
           return MaterialApp(
+            scaffoldMessengerKey: mainScaffoldKey,
             // showSemanticsDebugger: true,
 
             debugShowCheckedModeBanner: false,
@@ -139,7 +140,7 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
             try {
               switch (routeSettings.name) {
                 case HomePage.routeName:
-                  return MaterialPageRoute(builder: (_) => const HomePage());
+                  return MaterialPageRoute(builder: (_) => HomePage(controller: widget.settingsController));
                 case ListenLivePage.routeName:
                   return MaterialPageRoute(builder: (_) => const ListenLivePage());
                 case OnDemandPage.routeName:

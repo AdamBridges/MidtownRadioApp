@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'service.dart';
 
 class SettingsController extends ChangeNotifier {
@@ -11,14 +10,14 @@ class SettingsController extends ChangeNotifier {
   ThemeMode get themeMode => _themeMode;
 
   Future<void> loadSettings() async {
-    print("is called ");
+    // print("is called ");
     _themeMode = await _settingsService.themeMode();
     notifyListeners();
   }
 
   Future<void> updateThemeMode(ThemeMode? newThemeMode) async {
 
-    print("is saved ");
+    // print("is saved ");
     if (newThemeMode == null) return;
     if (newThemeMode == _themeMode) return;
 

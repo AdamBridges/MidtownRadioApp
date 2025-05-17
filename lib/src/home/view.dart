@@ -4,7 +4,6 @@ import 'package:ctwr_midtown_radio_app/src/listen_live/view.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/view.dart';
 import 'package:ctwr_midtown_radio_app/src/layout/drawer.dart';
 import 'dart:math';
-
 import '../settings/controller.dart';
 
 class HomePage extends StatelessWidget {
@@ -15,6 +14,7 @@ class HomePage extends StatelessWidget {
 
   static const routeName = '/';
   final SettingsController controller;
+
 
   @override
   Widget build(BuildContext context) {

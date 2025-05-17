@@ -17,6 +17,10 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 // Initiate singleton for app access to system audio controls
 late AudioHandler audioHandler;
 late AudioPlayerHandler audioPlayerHandler;
+// used to reference main scaffold to show snackbars on errors
+// used to notify user if URL cannot launch
+final GlobalKey<ScaffoldMessengerState> mainScaffoldKey = GlobalKey();
+
 void main() async {
   // Ensure that plugin services are initialized
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +29,8 @@ void main() async {
   final settingsController = SettingsController(SettingsService());
   await settingsController.loadSettings();  
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey();
+
+
 
 
   OnDemand.primeCache(); 
