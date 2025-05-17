@@ -1,9 +1,9 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:ctwr_midtown_radio_app/main.dart';
-import 'package:ctwr_midtown_radio_app/src/on_demand/collapsable_text.dart';
 import 'package:flutter/material.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/controller.dart';
 import 'package:flutter/rendering.dart';
+import 'package:readmore/readmore.dart';
 
 /// This is the page that will show the list of episodes for a single show
 /// typically directed from [OnDemandPage] (in on_demand/view.dart)
@@ -315,10 +315,14 @@ class _EpisodeListTileState extends State<_EpisodeListTile> {
     // Dynamic maxLines for description
     int descriptionMaxLines = 3;
     if (textScaleFactor > 1.7) {
+      debugPrint("five");
       descriptionMaxLines = 5;
     } else if (textScaleFactor > 1.3) {
       descriptionMaxLines = 4;
+            debugPrint("four");
+
     }
+
 
     return StreamBuilder<MediaItem?>(
     stream: audioHandler.mediaItem,
@@ -471,7 +475,28 @@ class _EpisodeListTileState extends State<_EpisodeListTile> {
                 // put description below title and image
                 if (widget.episode.episodeDescription != null && widget.episode.episodeDescription!.isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  CollapsableText(text: widget.episode.episodeDescription!, maxLines: 3, style: Theme.of(context).textTheme.bodySmall)
+
+                  // shows with "more" or "less" - cuts to 3 lines (more if text is larger), but expands to full size
+                  ReadMoreText(
+
+                    widget.episode.episodeDescription!, // The main text content
+                    trimLines: descriptionMaxLines,   
+                    trimMode: TrimMode.Line,                 
+                    style: Theme.of(context).textTheme.bodyMedium!,
+                    trimCollapsedText: ' more',
+                    trimExpandedText: ' less',
+                    delimiter: '... ',
+
+                    moreStyle: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+
+                    lessStyle: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  )
                 ],
                 if (widget.episode.episodeStreamUrl.isEmpty)
                   Padding( 
