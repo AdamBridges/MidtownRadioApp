@@ -39,14 +39,40 @@ class AudioPlayerHandler extends BaseAudioHandler {
 
       // when current podcast is done, it auto advances to next in the show
       if (processingState == ProcessingState.completed) {
-        // only skip to next if it's not a live stream and there's a next item
-        if (currentMediaItem?.isLive != true && _currentIndex < _queue.length - 1) {
-          Future.microtask(() => skipToNext());
-        } else if (currentMediaItem?.isLive != true) {
-          // stops at the end of an on-demand queue
-          Future.microtask(() => stop());
+        debugPrint(_player.position.toString());
+        debugPrint(currentMediaItem?.duration.toString());
+        // sometimes theres an issue caused by the backend 
+        // where the audio sees the full duration, ie 55 mins, and sees the player position is like 0:00
+        // and it still makrs it "complete"
+        // the following is to shield from that and notify users if that happens.
+        // we want this snackbar to show when this happens, but not on a normal completion.
+        // from testing, a normal completion can be off by a feew millisecons, and an error will be off by the whole length of the show
+        if (currentMediaItem?.duration != null
+            && (_player.position - currentMediaItem!.duration!).abs() >= Duration(seconds: 5)){
+          
+            Future.microtask(() => stop());
+
+            mainScaffoldKey.currentState?.showSnackBar(
+              SnackBar(
+                content: Text('Sorry, the audio failed to play.'),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: EdgeInsets.all(12),
+                margin: EdgeInsets.all(16),
+              ),
+            );
         } else{
-          debugPrint("Error: Live stream should not 'complete'");
+          // only skip to next if it's not a live stream and there's a next item
+          if (currentMediaItem?.isLive != true && _currentIndex < _queue.length - 1) {
+            Future.microtask(() => skipToNext());
+          } else if (currentMediaItem?.isLive != true) {
+            // stops at the end of an on-demand queue
+            Future.microtask(() => stop());
+          } else{
+            debugPrint("Error: Live stream should not 'complete'");
+          }
         }
       }
     }, 

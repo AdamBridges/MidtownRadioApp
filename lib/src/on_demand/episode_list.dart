@@ -2,7 +2,6 @@ import 'package:audio_service/audio_service.dart';
 import 'package:ctwr_midtown_radio_app/main.dart';
 import 'package:flutter/material.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/controller.dart';
-import 'package:flutter/rendering.dart';
 import 'package:readmore/readmore.dart';
 
 /// This is the page that will show the list of episodes for a single show
@@ -338,12 +337,9 @@ class _EpisodeListTileState extends State<_EpisodeListTile> {
     // Dynamic maxLines for description
     int descriptionMaxLines = 3;
     if (textScaleFactor > 1.7) {
-      debugPrint("five");
       descriptionMaxLines = 5;
     } else if (textScaleFactor > 1.3) {
       descriptionMaxLines = 4;
-            debugPrint("four");
-
     }
 
 
@@ -359,94 +355,70 @@ class _EpisodeListTileState extends State<_EpisodeListTile> {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           // ontap - set url and start playin'
-          // Presuming in your widget you have access to:
-// final PodcastShow currentShow; // The show object that widget.episode belongs to.
-// final Episode selectedEpisode = widget.episode; // The specific episode tapped.
-// And audioPlayerHandler is your AudioPlayerHandler instance.
-// Also, ensure _parseDurationToSystem is accessible.
+          onTap: widget.episode.episodeStreamUrl.isNotEmpty ? () {
+              // Get all episodes from the current show.
+              final List<Episode> allEpisodesInShow = widget.show.episodes;
 
-onTap: widget.episode.episodeStreamUrl.isNotEmpty ? () {
-    // 1. Get all episodes from the current show.
-    // Assuming 'currentShow' is available and has an 'episodes' list.
-    final List<Episode> allEpisodesInShow = widget.show.episodes;
+              // find the index of the selected episode.
+              int selectedEpisodeIndex = allEpisodesInShow.indexWhere(
+                  (ep) => ep.guid == widget.episode.guid // match by a unique ID like guid
+              );
 
-    // 2. Find the index of the selected episode.
-    // Using guid for a more reliable match, assuming Episode has a unique guid.
-    int selectedEpisodeIndex = allEpisodesInShow.indexWhere(
-        (ep) => ep.guid == widget.episode.guid // Match by a unique ID like guid
-    );
+              if (selectedEpisodeIndex == -1) {
+                  // fallback if guid isn't available or matching fails, try by stream URL or name, though less reliable.
+                  selectedEpisodeIndex = allEpisodesInShow.indexWhere(
+                      (ep) => ep.episodeStreamUrl == widget.episode.episodeStreamUrl
+                  );
+                  if (selectedEpisodeIndex == -1) {
+                      debugPrint("Error: Selected episode not found in the show's list. Cannot play.");
+                      // Optionally show a message to the user.
+                      return; 
+                  }
+              }
 
-    if (selectedEpisodeIndex == -1) {
-        // Fallback if guid isn't available or matching fails, try by stream URL or name, though less reliable.
-        selectedEpisodeIndex = allEpisodesInShow.indexWhere(
-            (ep) => ep.episodeStreamUrl == widget.episode.episodeStreamUrl
-        );
-        if (selectedEpisodeIndex == -1) {
-            debugPrint("Error: Selected episode not found in the show's list. Cannot play.");
-            // Optionally show a message to the user.
-            return; 
-        }
-    }
+              // convert all Episode objects in the show to MediaItem objects.
+              List<MediaItem> mediaItemQueue = allEpisodesInShow.map((ep) {
+                // determine the image URL for this specific episode 'ep'.
+                // prefer episode-specific image, fallback to podcast image, then a generic placeholder.
+                String artImageUrl = ep.episodeSpecificImageUrl ?? ep.podcastImageUrl;
 
-    // 3. Convert all Episode objects in the show to MediaItem objects.
-    List<MediaItem> mediaItemQueue = allEpisodesInShow.map((ep) {
-        // Determine the image URL for this specific episode 'ep'.
-        // Prefer episode-specific image, fallback to podcast image, then a generic placeholder.
-        String artImageUrl = ep.episodeSpecificImageUrl ?? ep.podcastImageUrl;
-        // Ensure the URL is valid and absolute.
-        if (artImageUrl.isEmpty || !(artImageUrl.startsWith('http://') || artImageUrl.startsWith('https://'))) {
-            artImageUrl = 'https://via.placeholder.com/150/000000/FFFFFF/?text=No+Art'; // A generic placeholder
-        }
-        
-        // Parse duration string. Ensure _parseDurationToSystem is available in this scope.
-        // If _parseDurationToSystem is part of your widget, call it as widget._parseDurationToSystem.
-        // If it's a global/static utility, call it directly.
-        Duration? episodeDuration;
-        if (ep.duration != null) {
-            if (ep.duration!.contains(':')) {
-                // Assuming _parseDurationToSystem exists and is accessible:
-                // episodeDuration = _parseDurationToSystem(ep.duration!);
-                // If it's not available, you'll need to implement or import it.
-                // For now, let's use a simplified version if _parseDurationToSystem is missing.
-                 try {
-                    final parts = ep.duration!.split(':');
-                    if (parts.length == 2) {
-                       episodeDuration = Duration(minutes: int.parse(parts[0]), seconds: int.parse(parts[1]));
-                    } else if (parts.length == 3) {
-                       episodeDuration = Duration(hours: int.parse(parts[0]), minutes: int.parse(parts[1]), seconds: int.parse(parts[2]));
+                Duration? episodeDuration;
+                if (ep.duration != null) {
+                    if (ep.duration!.contains(':')) {
+                      try {
+                          final parts = ep.duration!.split(':');
+                          if (parts.length == 2) {
+                            episodeDuration = Duration(minutes: int.parse(parts[0]), seconds: int.parse(parts[1]));
+                          } else if (parts.length == 3) {
+                            episodeDuration = Duration(hours: int.parse(parts[0]), minutes: int.parse(parts[1]), seconds: int.parse(parts[2]));
+                          }
+                      } catch (e) { /* ignore parsing error, duration will be null */ }
+
+                    } else {
+                        episodeDuration = Duration(seconds: int.tryParse(ep.duration!) ?? 0);
                     }
-                 } catch (e) { /* ignore parsing error, duration will be null */ }
+                }
 
-            } else {
-                episodeDuration = Duration(seconds: int.tryParse(ep.duration!) ?? 0);
-            }
-        }
+                return MediaItem(
+                    id: ep.episodeStreamUrl,
+                    title: ep.episodeName,
+                    album: ep.podcastName,
+                    artist: ep.podcastName,
+                    artUri: Uri.parse(artImageUrl),
+                    duration: episodeDuration,
+                    extras: {
+                        'description': ep.episodeDescription ?? '',
+                        'guid': ep.guid,
+                    },
+                    isLive: false,
+                );
+            }).toList();
 
-
-        return MediaItem(
-            id: ep.episodeStreamUrl, // Crucial: This must be the actual stream URL.
-            title: ep.episodeName,
-            album: ep.podcastName, // This is usually the PodcastShow's title.
-            artist: ep.podcastName, // Often the podcast show is the "artist" for episodes.
-            artUri: Uri.parse(artImageUrl),
-            duration: episodeDuration,
-            extras: {
-                'description': ep.episodeDescription ?? '',
-                // You can add other relevant data from the Episode object here.
-                'guid': ep.guid,
-            },
-            // Mark as not live, which is typical for podcast episodes.
-            // isLive: false, // audio_service MediaItem defaults isLive to false
-        );
-    }).toList();
-
-    // 4. Call the new method in AudioPlayerHandler.
-    audioPlayerHandler.setPodcastShowQueue(
-      mediaItemQueue,
-      selectedEpisodeIndex,
-      // playWhenReady: true is the default in setPodcastShowQueue
-    );
-} : null,
+            audioPlayerHandler.setPodcastShowQueue(
+              mediaItemQueue,
+              selectedEpisodeIndex,
+            );
+          } : null,
           child: Padding(
             padding: const EdgeInsets.all(12.0),
             child: Column(
@@ -600,18 +572,5 @@ onTap: widget.episode.episodeStreamUrl.isNotEmpty ? () {
         ),
       );
     });
-  }
-
-   // Helper to parse duration string like "HH:MM:SS" or "MM:SS" to Duration object for audio_service
-  Duration? _parseDurationToSystem(String durationString) {
-    final parts = durationString.split(':').map((p) => int.tryParse(p) ?? 0).toList();
-    if (parts.length == 3) {
-      return Duration(hours: parts[0], minutes: parts[1], seconds: parts[2]);
-    } else if (parts.length == 2) {
-      return Duration(minutes: parts[0], seconds: parts[1]);
-    } else if (parts.length == 1) {
-      return Duration(seconds: parts[0]);
-    }
-    return null;
   }
 }
