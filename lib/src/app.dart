@@ -1,4 +1,3 @@
-import 'package:ctwr_midtown_radio_app/error_message.dart';
 import 'package:ctwr_midtown_radio_app/main.dart';
 // import 'package:ctwr_midtown_radio_app/src/on_demand/episode_list.dart';
 import 'package:ctwr_midtown_radio_app/src/settings/controller.dart';
@@ -20,31 +19,40 @@ class MidtownRadioApp extends StatelessWidget {
   const MidtownRadioApp({
     super.key,
     required this.settingsController,
+    required this.navigatorKey
   });
 
   final SettingsController settingsController;
+  final GlobalKey<NavigatorState> navigatorKey;
+
 
   @override
   Widget build(BuildContext context) {
-    return MidtownRadioStateful(settingsController: settingsController);
+    return MidtownRadioStateful(
+      settingsController: settingsController,
+      navigatorKey: navigatorKey,
+    );
   }
 }
 
 class MidtownRadioStateful extends StatefulWidget {
   const MidtownRadioStateful({
     super.key,
-    required this.settingsController
+    required this.settingsController,
+    required this.navigatorKey
   });
 
   final SettingsController settingsController;
+  final GlobalKey<NavigatorState> navigatorKey;
+
 
   @override
   MidtownRadioState createState() => MidtownRadioState();
 }
 
 class MidtownRadioState extends State<MidtownRadioStateful> {
-  final GlobalKey<NavigatorState> navigatorKey = GlobalKey();
   final ValueNotifier<bool> isModalOpen = ValueNotifier<bool>(false);
+  String? _lastError;
 
   @override
   Widget build(BuildContext context) {
@@ -52,56 +60,9 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
         listenable: widget.settingsController,
         builder: (BuildContext context, Widget? child) {
           return MaterialApp(
-            navigatorKey: navigatorKey,
+            navigatorKey: widget.navigatorKey,
 
             builder: (context, child) => Scaffold(
-              bottomSheet: Consumer<ErrorMessageProvider>(
-                builder: (context,error,child)=> (error.errorMessage.isNotEmpty) ? (IntrinsicHeight(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      children: [
-                        Expanded(child: Column(
-                          children: [
-                            Text(
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                              "Error"
-                              ),
-                            Padding(
-                              padding: const EdgeInsets.only(bottom:8.0),
-                              child: Text(
-                                style: TextStyle(
-                                  overflow: TextOverflow.ellipsis,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                                error.errorMessage.toString(),
-                                maxLines: 3,
-                                ),
-                            ),
-                            Text("Want to help? Report this error at our site!")
-                          ],
-                        )),
-                        Column(
-                          children: [
-                            ElevatedButton(
-                              onPressed: ()=>{
-                              error.clearErrorMessage()
-                              }, child: Icon(Icons.close)),
-                            ElevatedButton(
-                              onPressed: ()=>{
-                              openUrl(true)
-                              }, child: Icon(Icons.mail)),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                )) : const SizedBox.shrink(),
-              ),
                 body: child,
                 // Changed to nav bar so that body contents don't end up behind it
                 bottomNavigationBar: ValueListenableBuilder<bool>(
@@ -124,7 +85,7 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
             
                           if (!showPlayer) return const SizedBox.shrink();
                           return PlayerWidget(
-                            navigatorKey: navigatorKey,
+                            navigatorKey: widget.navigatorKey,
                             isModalOpen: isModalOpen,
                           );
                         },
@@ -156,23 +117,36 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
           themeMode: widget.settingsController.themeMode,
 
           onGenerateRoute: (RouteSettings routeSettings) {
-            return MaterialPageRoute<void>(
-              settings: routeSettings,
-              builder: (BuildContext context) {
-                switch (routeSettings.name) {
-                  case HomePage.routeName:
-                    return const HomePage();
-                  case ListenLivePage.routeName:
-                    return const ListenLivePage();
-                  case OnDemandPage.routeName:
-                    return const OnDemandPage();
-                  case SettingsPage.routeName:
-                    return SettingsPage(controller: widget.settingsController,);
-                  default:
-                    return const ErrorPage();
-                }
+            try {
+              switch (routeSettings.name) {
+                case HomePage.routeName:
+                  return MaterialPageRoute(builder: (_) => const HomePage());
+                case ListenLivePage.routeName:
+                  return MaterialPageRoute(builder: (_) => const ListenLivePage());
+                case OnDemandPage.routeName:
+                  return MaterialPageRoute(builder: (_) => const OnDemandPage());
+                case SettingsPage.routeName:
+                  return MaterialPageRoute(
+                    builder: (_) => SettingsPage(controller: widget.settingsController),
+                  );
+                default:
+                  // For unknown routes, pass the route name to ErrorPage
+                  return MaterialPageRoute(
+                    builder: (_) => ErrorPage(
+                      error: 'Route not found: ${routeSettings.name}',
+                      stackTrace: null,
+                    ),
+                  );
               }
-            );
+            } catch (e, stack) {
+              // Catch any errors during route generation
+              return MaterialPageRoute(
+                builder: (_) => ErrorPage(
+                  error: 'Failed to load route: ${e.toString()}',
+                  stackTrace: kDebugMode ? stack.toString() : null,
+                ),
+              );
+            }
           },
         );
       }
@@ -182,12 +156,39 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
   @override
   void initState() {
     super.initState();
+
+    // catch errors - navigate to error page
     FlutterError.onError = (FlutterErrorDetails details) {
-      errorMessageProvider.setErrorMessage(details.exceptionAsString());
+      _handleError(details.exception, details.stack);
     };
-    PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
-      errorMessageProvider.setErrorMessage(error.toString());
+
+    PlatformDispatcher.instance.onError = (error, stack) {
+      _handleError(error, stack);
+
+      // this is important, returning true prevents dart from trying to handle the errors itself.
+      // we want to handle them ourselves
       return true;
     };
+  }
+
+  void _handleError(dynamic error, StackTrace? stack) {
+    // Avoid duplicate errors and error loops
+    final errorStr = error.toString();
+    if (_lastError == errorStr || !mounted) return;
+    _lastError = errorStr;
+
+    debugPrint('Error: $error\n$stack');
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) async{
+      await widget.navigatorKey.currentState?.pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => ErrorPage(
+            error: errorStr,
+            stackTrace: kDebugMode ? stack.toString() : null,
+          ),
+        ),
+      );
+      _lastError = "";
+    });
   }
 }

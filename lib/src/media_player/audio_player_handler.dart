@@ -1,20 +1,21 @@
-import 'package:ctwr_midtown_radio_app/error_message.dart';
+import 'package:ctwr_midtown_radio_app/src/error/view.dart';
 import 'package:flutter/foundation.dart'; // For debugPrint
+import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_service/audio_service.dart';
 
 class AudioPlayerHandler extends BaseAudioHandler {
   final AudioPlayer _player = AudioPlayer();
-  final ErrorMessageProvider _errorMessageProvider;
 
   // for On-Demand Media, we queue up next song in the podcast so use can click "next"
   List<MediaItem> _queue = [];
   int _currentIndex = -1;
 
   Stream<Duration> get positionStream => _player.positionStream;
+  final GlobalKey<NavigatorState> navigatorKey;
   
   // Here we add a bunch of listeners to the _player to broadcast loading, metadata changes to the rest of the app
-  AudioPlayerHandler(this._errorMessageProvider) {
+  AudioPlayerHandler({required this.navigatorKey}) {
 
     // listen to state changes, buffering, etc. (from playbackEventStream)
     _player.playbackEventStream.listen((event) {
@@ -58,14 +59,26 @@ class AudioPlayerHandler extends BaseAudioHandler {
     }, 
     
     onError: (Object e, StackTrace stackTrace) {
-      _errorMessageProvider.setErrorMessage("Audio Unavailable: $e");
       playbackState.add(playbackState.value.copyWith(
         processingState: AudioProcessingState.error,
         playing: false,
         errorMessage: 'Player error: $e',
       ));
-      debugPrint('AUDIO HANDLER ERROR: $e \n$stackTrace');
+    // Avoid duplicate errors and error loops
+    final errorStr = e.toString();
+    debugPrint('Error: $e\n$stackTrace');
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) async{
+      await navigatorKey.currentState?.pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => ErrorPage(
+            error: errorStr,
+            stackTrace: kDebugMode ? stackTrace.toString() : null,
+          ),
+        ),
+      );
     });
+      });
 
     // broadcasts to the rest of the app what position in time the audio is at
     // This happens roughly every second so a progress bar can be displayed

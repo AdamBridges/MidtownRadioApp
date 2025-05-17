@@ -2,7 +2,6 @@
 // ^ this does not work for some reason on the app, despite working on my browser
 // I have no idea why - I tried to figure it out but havent been able to
 
-import 'package:ctwr_midtown_radio_app/error_message.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -18,16 +17,17 @@ import 'package:provider/provider.dart';
 // Initiate singleton for app access to system audio controls
 late AudioHandler audioHandler;
 late AudioPlayerHandler audioPlayerHandler;
-final ErrorMessageProvider errorMessageProvider = ErrorMessageProvider();
 void main() async {
   // Ensure that plugin services are initialized
   WidgetsFlutterBinding.ensureInitialized();
 
   final settingsController = SettingsController(SettingsService());
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey();
+
 
   OnDemand.primeCache(); 
 
-  audioPlayerHandler = AudioPlayerHandler(errorMessageProvider);
+  audioPlayerHandler = AudioPlayerHandler(navigatorKey: navigatorKey);
   
   audioHandler = await AudioService.init(
     builder: () => audioPlayerHandler,
@@ -50,9 +50,8 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
   
-  runApp(ChangeNotifierProvider(
-    create: (context) => errorMessageProvider,
-    child: MidtownRadioApp(settingsController: settingsController)
-    ));
-
+  runApp(MidtownRadioApp(
+    settingsController: settingsController,
+    navigatorKey: navigatorKey,
+  ));
 }

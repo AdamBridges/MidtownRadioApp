@@ -14,6 +14,8 @@ PODS:
   - sqflite_darwin (0.0.4):
     - Flutter
     - FlutterMacOS
+  - url_launcher_ios (0.0.1):
+    - Flutter
 
 DEPENDENCIES:
   - audio_service (from `.symlinks/plugins/audio_service/darwin`)
@@ -22,6 +24,7 @@ DEPENDENCIES:
   - just_audio (from `.symlinks/plugins/just_audio/darwin`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - sqflite_darwin (from `.symlinks/plugins/sqflite_darwin/darwin`)
+  - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
 
 EXTERNAL SOURCES:
   audio_service:
@@ -36,6 +39,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
   sqflite_darwin:
     :path: ".symlinks/plugins/sqflite_darwin/darwin"
+  url_launcher_ios:
+    :path: ".symlinks/plugins/url_launcher_ios/ios"
 
 SPEC CHECKSUMS:
   audio_service: cab6c1a0eaf01b5a35b567e11fa67d3cc1956910
@@ -44,6 +49,7 @@ SPEC CHECKSUMS:
   just_audio: a42c63806f16995daf5b219ae1d679deb76e6a79
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
   sqflite_darwin: 5a7236e3b501866c1c9befc6771dfd73ffb8702d
+  url_launcher_ios: 5334b05cef931de560670eeae103fd3e431ac3fe
 
 PODFILE CHECKSUM: 4305caec6b40dde0ae97be1573c53de1882a07e5
 
