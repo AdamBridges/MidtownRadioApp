@@ -1,5 +1,6 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:ctwr_midtown_radio_app/main.dart';
+import 'package:ctwr_midtown_radio_app/src/on_demand/collapsable_text.dart';
 import 'package:flutter/material.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/controller.dart';
 import 'package:flutter/rendering.dart';
@@ -251,7 +252,22 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
               ),
             ),
           ),
-
+          if (widget.show.description != null && widget.show.description!.isNotEmpty) SliverToBoxAdapter(child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Center(child: Text(widget.show.description!)),
+          )),
+          SliverToBoxAdapter(child: Padding(
+            padding: const EdgeInsets.only(bottom:8.0),
+            child: Center(
+              child: Text(
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                "Episodes"
+                ),),
+          ),),
           _episodes.isEmpty
             ? SliverFillRemaining(
               child: Center(child: Text("No episodes found for ${widget.show.title}."))
@@ -277,14 +293,20 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
 }
 
 // view of one single episode - clickable to set stream
-class _EpisodeListTile extends StatelessWidget {
+class _EpisodeListTile extends StatefulWidget {
   final Episode episode;
   const _EpisodeListTile({required this.episode});
 
   @override
+  State<_EpisodeListTile> createState() => _EpisodeListTileState();
+}
+
+class _EpisodeListTileState extends State<_EpisodeListTile> {
+
+  @override
   Widget build(BuildContext context) {
     // Use episode-specific image if available, otherwise fallback to show's image
-    final String imageUrlToDisplay = episode.episodeSpecificImageUrl ?? episode.podcastImageUrl;
+    final String imageUrlToDisplay = widget.episode.episodeSpecificImageUrl ?? widget.episode.podcastImageUrl;
     final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final Color? metadataColor = isDarkMode ? Colors.grey[400] : Colors.grey[700];
 
@@ -320,7 +342,7 @@ class _EpisodeListTile extends StatelessWidget {
     stream: audioHandler.mediaItem,
     builder: (context, snapshot) {
       final currentMediaItem = snapshot.data;
-      final isSelected = currentMediaItem?.id == episode.episodeStreamUrl && episode.episodeStreamUrl.isNotEmpty;
+      final isSelected = currentMediaItem?.id == widget.episode.episodeStreamUrl && widget.episode.episodeStreamUrl.isNotEmpty;
 
       return Card(
         margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 7.0),
@@ -328,18 +350,18 @@ class _EpisodeListTile extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           // ontap - set url and start playin'
-          onTap: episode.episodeStreamUrl.isNotEmpty ? () {
+          onTap: widget.episode.episodeStreamUrl.isNotEmpty ? () {
             // debugPrint("url: ${episode.episodeStreamUrl}");
             final toPlay = MediaItem(
-                id: episode.episodeStreamUrl,
-                title: episode.episodeName,
-                album: episode.podcastName,
+                id: widget.episode.episodeStreamUrl,
+                title: widget.episode.episodeName,
+                album: widget.episode.podcastName,
                 artUri: Uri.parse(imageUrlToDisplay),
                 // duration: null,
-                duration: episode.duration != null && episode.duration!.contains(':')
-                  ? _parseDurationToSystem(episode.duration!) 
-                  : (episode.duration != null ? Duration(seconds: int.tryParse(episode.duration!) ?? 0) : null),
-                extras: {'description': episode.episodeDescription ?? ''}
+                duration: widget.episode.duration != null && widget.episode.duration!.contains(':')
+                  ? _parseDurationToSystem(widget.episode.duration!) 
+                  : (widget.episode.duration != null ? Duration(seconds: int.tryParse(widget.episode.duration!) ?? 0) : null),
+                extras: {'description': widget.episode.episodeDescription ?? ''}
               );
             // debugPrint("\n\nTo Play: $toPlay\n\n");
 
@@ -362,7 +384,7 @@ class _EpisodeListTile extends StatelessWidget {
                         children: [
                           // episode title
                           Text(
-                            episode.episodeName,
+                            widget.episode.episodeName,
                             maxLines: titleMaxLines,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -391,7 +413,7 @@ class _EpisodeListTile extends StatelessWidget {
                                     const SizedBox(width: 4),
                                     Flexible(
                                       child: Text(
-                                        episode.episodeDateForDisplay,
+                                        widget.episode.episodeDateForDisplay,
                                         overflow: TextOverflow.ellipsis,
                                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                           color: metadataColor, 
@@ -418,7 +440,7 @@ class _EpisodeListTile extends StatelessWidget {
                                       const SizedBox(width: 4),
                                       Flexible(
                                         child: Text(
-                                          episode.duration!,
+                                          widget.episode.duration!,
                                           overflow: TextOverflow.ellipsis,
                                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                             color: metadataColor, 
@@ -465,16 +487,11 @@ class _EpisodeListTile extends StatelessWidget {
                   ],
                 ),
                 // put description below title and image
-                if (episode.episodeDescription != null && episode.episodeDescription!.isNotEmpty) ...[
+                if (widget.episode.episodeDescription != null && widget.episode.episodeDescription!.isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  Text(
-                    episode.episodeDescription!,
-                    maxLines: descriptionMaxLines,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  CollapsableText(text: widget.episode.episodeDescription!, maxLines: 3, style: Theme.of(context).textTheme.bodySmall)
                 ],
-                if (episode.episodeStreamUrl.isEmpty)
+                if (widget.episode.episodeStreamUrl.isEmpty)
                   Padding( 
                     padding: EdgeInsets.all(8),
                     child: Text("audio unavailable")
