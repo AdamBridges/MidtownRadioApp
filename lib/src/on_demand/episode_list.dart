@@ -260,7 +260,8 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
           )),
           SliverToBoxAdapter(child: Padding(
             padding: const EdgeInsets.only(bottom:8.0),
-            child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Text(
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontSize: 20,
@@ -268,7 +269,8 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
                   color: Theme.of(context).colorScheme.primary,
                 ),
                 "Episodes"
-                ),),
+                ),
+            ),
           ),),
           _episodes.isEmpty
             ? SliverFillRemaining(

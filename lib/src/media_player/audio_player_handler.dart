@@ -292,7 +292,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
 
   @override
   Future<void> updateQueue(List<MediaItem> queue) async {
-    debugPrint("AudioPlayerHandler: Updating queue with ${queue.length} items.");
+    // debugPrint("AudioPlayerHandler: Updating queue with ${queue.length} items.");
     _queue = List.from(queue); // Ensure it's a new list instance
     super.queue.add(_queue); // This updates the queue for audio_service UI (e.g., notification)
     // After updating the queue, re-evaluate controls and system actions.
@@ -311,7 +311,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
   @override
   Future<void> skipToQueueItem(int index) async {
     if (mediaItem.value?.isLive == true) return;
-    debugPrint("AudioPlayerHandler: skipToQueueItem called for index $index. Current queue size: ${_queue.length}");
+    // debugPrint("AudioPlayerHandler: skipToQueueItem called for index $index. Current queue size: ${_queue.length}");
     if (index < 0 || index >= _queue.length) {
         debugPrint("AudioPlayerHandler: skipToQueueItem index $index is out of bounds for queue size ${_queue.length}.");
         return;
@@ -412,7 +412,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
     } else if (mediaItem.value != null) {
         // No queue, but a single mediaItem might have been set previously (e.g. a live stream via setMediaItem)
         // Attempt to play this single item. setMediaItem will create a temporary queue for it.
-        debugPrint("AudioPlayerHandler: Play - No queue, trying to play current mediaItem.value directly: ${mediaItem.value?.title}");
+        // debugPrint("AudioPlayerHandler: Play - No queue, trying to play current mediaItem.value directly: ${mediaItem.value?.title}");
         await setMediaItem(mediaItem.value!, playWhenReady: true); // This will queue and play it as a single item
     }
      else {
