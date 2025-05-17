@@ -11,11 +11,9 @@
 
     <application
         android:label="Midtown Radio KW"
-        android:label="Midtown Radio KW"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity
-            android:name="com.ryanheise.audioservice.AudioServiceActivity"
             android:name="com.ryanheise.audioservice.AudioServiceActivity"
             android:exported="true"
             android:launchMode="singleTop"
@@ -53,6 +51,5 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-
     </application>
 </manifest>
