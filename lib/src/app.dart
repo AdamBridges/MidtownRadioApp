@@ -3,6 +3,7 @@ import 'package:ctwr_midtown_radio_app/main.dart';
 import 'package:ctwr_midtown_radio_app/src/settings/controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:ctwr_midtown_radio_app/src/media_player/widget.dart';
@@ -60,39 +61,55 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
         listenable: widget.settingsController,
         builder: (BuildContext context, Widget? child) {
           return MaterialApp(
+            // showSemanticsDebugger: true,
+
+            debugShowCheckedModeBanner: false,
             navigatorKey: widget.navigatorKey,
 
-            builder: (context, child) => Scaffold(
-                body: child,
-                // Changed to nav bar so that body contents don't end up behind it
-                bottomNavigationBar: ValueListenableBuilder<bool>(
-                valueListenable: isModalOpen,
-                builder: (context, modalOpen, _) {
-                  if (modalOpen) return const SizedBox.shrink();
-                  return StreamBuilder<MediaItem?>(
-                    stream: audioHandler.mediaItem,
-                    builder: (context, mediaSnapshot) {
-                      final mediaItem = mediaSnapshot.data;
-                      return StreamBuilder<PlaybackState>(
-                        stream: audioHandler.playbackState,
-                        builder: (context, stateSnapshot) {
-                          final playbackState = stateSnapshot.data;
-                          final processingState = playbackState?.processingState ??
-                              AudioProcessingState.idle;
-            
-                          final showPlayer = mediaItem != null &&
-                              processingState != AudioProcessingState.idle;
-            
-                          if (!showPlayer) return const SizedBox.shrink();
-                          return PlayerWidget(
-                            navigatorKey: widget.navigatorKey,
-                            isModalOpen: isModalOpen,
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
+            builder: (context, child) => Semantics(
+              sortKey: const OrdinalSortKey(0),
+              explicitChildNodes: true,
+              child: Scaffold(
+                  body: Semantics(
+                    sortKey: const OrdinalSortKey(0),
+                    child: child
+                  ),
+                  // Changed to nav bar so that body contents don't end up behind it
+                  bottomNavigationBar: ValueListenableBuilder<bool>(
+                  valueListenable: isModalOpen,
+                  builder: (context, modalOpen, _) {
+                    if (modalOpen) return const SizedBox.shrink();
+                    return StreamBuilder<MediaItem?>(
+                      stream: audioHandler.mediaItem,
+                      builder: (context, mediaSnapshot) {
+                        final mediaItem = mediaSnapshot.data;
+                        return StreamBuilder<PlaybackState>(
+                          stream: audioHandler.playbackState,
+                          builder: (context, stateSnapshot) {
+                            final playbackState = stateSnapshot.data;
+                            final processingState = playbackState?.processingState ??
+                                AudioProcessingState.idle;
+              
+                            final showPlayer = mediaItem != null &&
+                                processingState != AudioProcessingState.idle;
+              
+                            if (!showPlayer) return const SizedBox.shrink();
+                            return Semantics(
+                              button: true,
+                              sortKey: OrdinalSortKey(1),
+                              explicitChildNodes: true,
+                              label: "Expand Fullscreen Player View",
+                              child: PlayerWidget(
+                                navigatorKey: widget.navigatorKey,
+                                isModalOpen: isModalOpen,
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
             ),
 

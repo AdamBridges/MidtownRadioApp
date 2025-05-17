@@ -1,7 +1,6 @@
 import 'package:ctwr_midtown_radio_app/src/open_url.dart';
 import 'package:flutter/material.dart';
 import 'package:ctwr_midtown_radio_app/src/home/view.dart';
-import 'package:provider/provider.dart';
 
 class ErrorPage extends StatelessWidget {
   const ErrorPage({
@@ -82,8 +81,11 @@ class ErrorPage extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 40),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 16.0,
+              runSpacing: 12.0,
               children: [
                 FilledButton.tonal(
                   onPressed: () {
@@ -107,7 +109,7 @@ class ErrorPage extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 16),
+
                 FilledButton(
                   onPressed: () => openUrl(true),
                   style: FilledButton.styleFrom(

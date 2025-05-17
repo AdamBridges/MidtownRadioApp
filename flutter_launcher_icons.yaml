@@ -1,6 +1,6 @@
 # flutter pub run flutter_launcher_icons
 flutter_launcher_icons:
-  image_path: "assets/icon_variations/mic_red_cropped_very_dark_grey_bg.jpg"
+  image_path: "assets/icon_variations/mic_red_on_grey_cropped.jpg"
 
   android: "launcher_icon"
   # image_path_android: "assets/icon/icon.png"
@@ -10,7 +10,7 @@ flutter_launcher_icons:
   # adaptive_icon_monochrome: "assets/icon/monochrome.png"
 
   ios: true
-  image_path_ios: "assets/icon_variations/mic_red_cropped_very_dark_grey_bg.jpg"
+  image_path_ios: "assets/icon_variations/mic_red_on_grey_cropped.jpg"
   remove_alpha_channel_ios: true
   # image_path_ios_dark_transparent: "assets/icon/icon_dark.png"
   # image_path_ios_tinted_grayscale: "assets/icon/icon_tinted.png"

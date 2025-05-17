@@ -3,6 +3,7 @@ import 'package:ctwr_midtown_radio_app/main.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/collapsable_text.dart';
 import 'package:flutter/material.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/controller.dart';
+import 'package:flutter/rendering.dart';
 
 /// This is the page that will show the list of episodes for a single show
 /// typically directed from [OnDemandPage] (in on_demand/view.dart)
@@ -46,7 +47,7 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
   }
 
   // loads more and adds to bottom of list for pagination
-  // also manages loading state for UI progress indicatoes
+  // also manages loading state for UI progress indicators
   void _loadMoreEpisodes() {
      if (!mounted || _isLoadingMore) return;
     setState(() { _isLoadingMore = true; });
@@ -71,35 +72,51 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
     // the ACTUAL episodes we are displaying - this will expand for pagination as user scrolls
     final List<Episode> displayedEpisodes = _episodes.take(_itemsToLoad).toList();
 
+    // here we do some calculations based on text scale size so that 
+    // text renders visibily and does not lose information if user increases size for accessibility
+    // - if scale factor is greater than 1.5 we stack 2 lines for the appbar, instead of 1 line of text
+    // - if we have 2 lines (ie. scale factor > 1.5) then we outline text so that it still contrasts on background image
+
     final double screenWidth = MediaQuery.of(context).size.width;
-    // the height of the top part of the screen with the logo
     final double sliverExpandedHeight = screenWidth * 0.6;
 
+    final textScaleFactor = MediaQuery.of(context).textScaler.scale(1);
+
+    // default is 1 line, and default toolbar height
+    int appBarTitleMaxLines = 1;
+    double currentToolbarHeight = kToolbarHeight;
+    // debugPrint("appBarTitleMaxLines: ${appBarTitleMaxLines}");
+
+    // increase to 2 lines for title if scale factor on text is > 1.5
+    if (textScaleFactor > 1.5) { 
+      appBarTitleMaxLines = 2;
+      final topPad = MediaQuery.of(context).padding.top;
+      // debugPrint("toppad: ${topPad}");
+
+      // Increase toolbar height to accommodate two lines.
+      currentToolbarHeight =  (appBarTitleMaxLines) * textScaleFactor * 16 + topPad;
+    }
     return Scaffold(
       body: CustomScrollView(
         controller: _scrollController,
         slivers: <Widget>[
           SliverAppBar(
+            
+            toolbarHeight: currentToolbarHeight,
 
             // back button -- white on dark to always contrast with whatever image is behind it
-            leading: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: InkWell(
-                onTap: () => Navigator.of(context).pop(),
-                customBorder: const CircleBorder(),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withAlpha((0.7 * 256).round()),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    
-                    Icons.chevron_left,
-                    color: Colors.white,
-                    size: 30,
-                  ),
+            leading: IconButton(
+              style: ButtonStyle(
+                fixedSize: WidgetStateProperty.all(
+                  Size(48, 48),
+                ),
+                backgroundColor: WidgetStateProperty.all(
+                  Colors.black.withAlpha((0.7 * 256).round()),
                 ),
               ),
+              icon: const Icon(Icons.chevron_left, size: 30, color: Colors.white),
+              tooltip: 'Back to Shows',
+              onPressed: () => Navigator.of(context).pop(),
             ),
 
             expandedHeight: sliverExpandedHeight,
@@ -115,12 +132,42 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
               titlePadding: const EdgeInsetsDirectional.only(start: 60.0, bottom: 16.0, end:60.0), // Adjust padding
               
               // text -- title of the show
-              title: Text(
-                widget.show.title,
-                style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600, color: Colors.white),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              title: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // this is the outline on the title -- only shows if title is 2 lines tall
+                  if (appBarTitleMaxLines > 1)
+                    ExcludeSemantics(
+                      child: Text(
+                        widget.show.title,
+                        textAlign: TextAlign.center,
+                        maxLines: appBarTitleMaxLines,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          // fontsize scales automatically if user enables OS-side text scaling
+                          fontSize: 16.0,
+                          fontWeight: FontWeight.w600,
+                          foreground: Paint()
+                            ..style = PaintingStyle.stroke
+                            ..strokeWidth = 2 * textScaleFactor
+                            ..color = Colors.black.withAlpha((0.8 * 255).round()),
+                        ),
+                      ),
+                    ),
+              
+                  // the actual text title -- shows always
+                  Semantics(
+                    label: widget.show.title,
+                    header: true,
+                    child: Text(
+                      widget.show.title,
+                      style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600, color: Colors.white),
+                      textAlign: TextAlign.center,
+                      maxLines: appBarTitleMaxLines,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
 
               // background is image for the show
@@ -130,24 +177,55 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.network(
-                      widget.show.imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey),
+                    Semantics(
+                      label: "Album art for ${widget.show.title}",
+                      image: true,
+                      child: Image.network(
+                        excludeFromSemantics: true,
+                        widget.show.imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey),
+                      ),
                     ),
-                    // gradient so that title contrasts well even on light images
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withAlpha((0.1 * 256).round()),
-                            Colors.black.withAlpha((0.5 * 256).round()),
-                            Colors.black.withAlpha((0.8 * 256).round()),
-                          ],
-                          stops: [0.5, 0.6, 0.8, 1]
+                    // gradient from bottom so that title contrasts well even on light images
+                    ExcludeSemantics(
+                      child: Container(
+                        
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withAlpha((0.4 * 255).round()),
+                              Colors.black.withAlpha((0.7 * 255).round()),
+                              Colors.black.withAlpha((0.8 * 255).round()),
+                            ],
+                            stops: const [
+                              0.5,
+                              0.7,
+                              0.85,
+                              1.0
+                            ],
+                          )
+                        ),
+                      ),
+                    ),
+                
+                    // gradient to contrast OS buttons at top with so its not white on white
+                    ExcludeSemantics(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withAlpha((0.7 * 255).round()),
+                              Colors.black.withAlpha((0.5 * 255).round()),
+                              Colors.transparent,
+                            ],
+                            stops: const [0.0, 0.1, 0.2],
+                          ),
                         ),
                       ),
                     ),
@@ -173,22 +251,23 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
                 ),),
           ),),
           _episodes.isEmpty
-              ? SliverFillRemaining(
-                  child: Center(child: Text("No episodes found for ${widget.show.title}.")))
-              // List of episodes
-              : SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (BuildContext context, int index) {
-                      if (index == displayedEpisodes.length && _isLoadingMore) {
-                        return const Center( child: CircularProgressIndicator() );
-                      }
-                      if (index >= displayedEpisodes.length) return const SizedBox.shrink();
-                      final Episode episode = displayedEpisodes[index];
-                      return _EpisodeListTile(episode: episode);
-                    },
-                    childCount: displayedEpisodes.length + (_isLoadingMore && displayedEpisodes.length < _episodes.length ? 1 : 0),
-                  ),
-                ),
+            ? SliverFillRemaining(
+              child: Center(child: Text("No episodes found for ${widget.show.title}."))
+            )
+            // List of episodes
+            : SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (BuildContext context, int index) {
+                  if (index == displayedEpisodes.length && _isLoadingMore) {
+                    return const Center( child: CircularProgressIndicator() );
+                  }
+                  if (index >= displayedEpisodes.length) return const SizedBox.shrink();
+                  final Episode episode = displayedEpisodes[index];
+                  return _EpisodeListTile(episode: episode);
+                },
+                childCount: displayedEpisodes.length + (_isLoadingMore && displayedEpisodes.length < _episodes.length ? 1 : 0),
+              ),
+            ),
         ],
       ),
     );
@@ -210,6 +289,36 @@ class _EpisodeListTileState extends State<_EpisodeListTile> {
   Widget build(BuildContext context) {
     // Use episode-specific image if available, otherwise fallback to show's image
     final String imageUrlToDisplay = widget.episode.episodeSpecificImageUrl ?? widget.episode.podcastImageUrl;
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final Color? metadataColor = isDarkMode ? Colors.grey[400] : Colors.grey[700];
+
+    // number of text rows increases if text is made larger so that information is preserved, 
+    // even at larger text sizes for accessibility
+    final textScaler = MediaQuery.of(context).textScaler;
+    final textScaleFactor = MediaQuery.of(context).textScaler.scale(1);
+
+    // Scaled icon size with text
+    const double baseMetadataIconSize = 12.0;
+    final double scaledMetadataIconSize = textScaler.scale(baseMetadataIconSize);
+
+    // Base font size for metadata, will be scaled by system if Text widget uses themed style
+    const double baseMetadataFontSize = 11.5; 
+
+    // Dynamic maxLines for title
+    int titleMaxLines = 2;
+    if (textScaleFactor > 1.7) {
+      titleMaxLines = 4; 
+    } else if (textScaleFactor > 1.3) {
+      titleMaxLines = 3;
+    }
+
+    // Dynamic maxLines for description
+    int descriptionMaxLines = 3;
+    if (textScaleFactor > 1.7) {
+      descriptionMaxLines = 5;
+    } else if (textScaleFactor > 1.3) {
+      descriptionMaxLines = 4;
+    }
 
     return StreamBuilder<MediaItem?>(
     stream: audioHandler.mediaItem,
@@ -237,6 +346,8 @@ class _EpisodeListTileState extends State<_EpisodeListTile> {
                 extras: {'description': widget.episode.episodeDescription ?? ''}
               );
             // debugPrint("\n\nTo Play: $toPlay\n\n");
+
+            // this starts playing episode
             audioPlayerHandler.customSetStream(
               toPlay
             );
@@ -253,9 +364,10 @@ class _EpisodeListTileState extends State<_EpisodeListTile> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // episode title
                           Text(
                             widget.episode.episodeName,
-                            maxLines: 2,
+                            maxLines: titleMaxLines,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w600,
@@ -264,37 +376,73 @@ class _EpisodeListTileState extends State<_EpisodeListTile> {
                             ),
                           ),
                           const SizedBox(height: 5),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.calendar_today_outlined, 
-                                size: 12, 
-                                color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850]
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                widget.episode.episodeDateForDisplay,
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850], fontSize: 11.5),
-                              ),
-                              if (widget.episode.duration != null && widget.episode.duration!.isNotEmpty) ...[
-                                Text(" • ", style: TextStyle(color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850], fontSize: 11.5)),
-                                Icon(Icons.timer_outlined, size: 12, color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850]),
-                                const SizedBox(width: 4),
-                                Text(
-                                  widget.episode.duration!,
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: (Theme.of(context).brightness == Brightness.dark) ? Colors.grey[400] : Colors.grey[850], fontSize: 11.5),
+                          // date and duration
+                          Wrap(
+                              spacing: 4.0, 
+                              runSpacing: 4.0,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                // date Info - row keeps the icon and text together
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      semanticLabel: "Published",
+                                      Icons.calendar_today_outlined, 
+                                      size: scaledMetadataIconSize, 
+                                      color: metadataColor
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        widget.episode.episodeDateForDisplay,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          color: metadataColor, 
+                                          fontSize: baseMetadataFontSize
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ]
-                            ],
-                          ),
+                                
+                                // duration Info (only if duration exists) - row keeps relevant icon with its text
+                                if (widget.episode.duration != null && widget.episode.duration!.isNotEmpty) ...[
+                                  Text("•", style: TextStyle(color: metadataColor, fontSize: baseMetadataFontSize)),
+
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        semanticLabel: "Duration",
+                                        Icons.timer_outlined, 
+                                        size: scaledMetadataIconSize, 
+                                        color: metadataColor
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          widget.episode.duration!,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                            color: metadataColor, 
+                                            fontSize: baseMetadataFontSize
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ]
+                              ],
+                            ),
                         ],
                       ),
                     ),
                     const SizedBox(width: 12),
+
                     ClipRRect(
                       borderRadius: BorderRadius.circular(6.0),
-
-                      // image for that show
+                      // image for that show -- right of title
                       child: Image.network(
                         imageUrlToDisplay,
                         width: 70,
@@ -320,6 +468,7 @@ class _EpisodeListTileState extends State<_EpisodeListTile> {
                     ),
                   ],
                 ),
+                // put description below title and image
                 if (widget.episode.episodeDescription != null && widget.episode.episodeDescription!.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   CollapsableText(text: widget.episode.episodeDescription!, maxLines: 3, style: Theme.of(context).textTheme.bodySmall)

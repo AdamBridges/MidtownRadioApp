@@ -5,6 +5,7 @@ import 'package:ctwr_midtown_radio_app/src/media_player/progress_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:ctwr_midtown_radio_app/src/media_player/fullscreen_player_modal.dart';
+import 'package:flutter/rendering.dart';
 
 class PlayerWidget extends StatefulWidget {
   final GlobalKey<NavigatorState> navigatorKey;
@@ -104,7 +105,7 @@ class _PlayerWidgetState extends State<PlayerWidget> {
           //           // Check actual displacement as well to avoid accidental mini-drags
           //           // This check might be too simple; velocity is often better.
           //           // Let's rely mainly on velocity direction and magnitude for now.
-
+        
           //           if (details.primaryVelocity! < -_minSwipeVelocity) { // Swiped Left (towards next)
           //             final bool canSkipNext = currentPlaybackState.controls.any((control) => control == MediaControl.skipToNext);
           //             if (canSkipNext) {
@@ -126,7 +127,7 @@ class _PlayerWidgetState extends State<PlayerWidget> {
               final isPlaying = playbackState?.playing ?? false;
               final isLoading = (playbackState?.processingState == AudioProcessingState.loading ||
                                  playbackState?.processingState == AudioProcessingState.buffering);
-
+          
               return Container(
                 padding: EdgeInsets.only(
                   top: 8.0, left: 8.0, right: 8.0,
@@ -153,12 +154,15 @@ class _PlayerWidgetState extends State<PlayerWidget> {
                               child: SizedBox(
                                 width: 28,
                                 height: 28,
-                                child: CircularProgressIndicator(),
+                                child: CircularProgressIndicator(semanticsLabel: "Loading Playback",),
                               ),
                             )
                             : IconButton(
                                 iconSize: 28,
-                                icon: Icon(isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded),
+                                icon: Semantics(
+                                  label: isPlaying ? "Pause" : "Play",
+                                  child: Icon(isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded)
+                                ),
                                 onPressed: () {
                                   if (primaryDisplay.isNotEmpty && primaryDisplay != "Nothing is loaded...") {
                                     if (isPlaying) {
@@ -189,7 +193,7 @@ class _PlayerWidgetState extends State<PlayerWidget> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-
+          
                               // Primary display line (Artist - Title or just Title)
                               Text(
                                 primaryDisplay,
@@ -200,7 +204,7 @@ class _PlayerWidgetState extends State<PlayerWidget> {
                             ],
                           ),
                         ),
-
+          
                         // Optional: Visual cue for swiping if not live
                         // if (!isLiveStream && (playbackState?.controls.any((c) => c == MediaControl.skipToNext || c == MediaControl.skipToPrevious) ?? false))
                         //     Icon(Icons.swap_horiz_rounded, color: theme.iconTheme.color?.withAlpha((0.4 * 256).round()), size: 22)
