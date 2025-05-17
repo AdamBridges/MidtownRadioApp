@@ -49,7 +49,7 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
   // loads more and adds to bottom of list for pagination
   // also manages loading state for UI progress indicators
   void _loadMoreEpisodes() {
-     if (!mounted || _isLoadingMore) return;
+    if (!mounted || _isLoadingMore) return;
     setState(() { _isLoadingMore = true; });
     Future.delayed(const Duration(milliseconds: 100), () { 
       if (!mounted) return;

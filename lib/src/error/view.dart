@@ -77,7 +77,7 @@ class ErrorPage extends StatelessWidget {
             ),
             const SizedBox(height: 32),
             Text(
-              'Please try again or report this issue to help us improve.',
+              'Please ensure you are connected to the internet and try again.',
               style: theme.textTheme.bodyLarge,
               textAlign: TextAlign.center,
             ),

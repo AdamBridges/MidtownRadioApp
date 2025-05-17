@@ -3,6 +3,9 @@ import 'package:flutter/foundation.dart'; // For debugPrint
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_service/audio_service.dart';
+import 'package:ctwr_midtown_radio_app/main.dart';
+import 'dart:io'; // For SocketException
+import 'package:flutter/services.dart'; // For PlatformException
 
 class AudioPlayerHandler extends BaseAudioHandler {
   final AudioPlayer _player = AudioPlayer();
@@ -47,25 +50,42 @@ class AudioPlayerHandler extends BaseAudioHandler {
         }
       }
     }, 
-    onError: (Object e, StackTrace stackTrace) {
+    onError: (Object e, StackTrace stackTrace) async {
+      await stop();
+
+      // update state
       playbackState.add(playbackState.value.copyWith(
         processingState: AudioProcessingState.error,
         playing: false,
         errorMessage: 'Player error: $e',
       ));
-      final errorStr = e.toString();
-      debugPrint('Error: $e\n$stackTrace');
-    
-      WidgetsBinding.instance.addPostFrameCallback((_) async{
-        await navigatorKey.currentState?.pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => ErrorPage(
-              error: errorStr,
-              stackTrace: kDebugMode ? stackTrace.toString() : null,
-            ),
+
+      // if no internet, then we show a snackbar, as this is more informative and a little bit nicer for the user.
+      // in case of other errors, we navigate to error page, as it is unexpected for other errors to occur. 
+      if ((e is PlatformException && e.code == '-1009') ||
+        e is SocketException ||
+        e.toString().contains('Connection failed')) {
+
+        // show SnackBar for internet issues
+        mainScaffoldKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text('No internet connection.'),
+            behavior: SnackBarBehavior.floating,
           ),
         );
-      });
+      } else {
+        // navigate to ErrorPage for other errors
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          navigatorKey.currentState?.pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => ErrorPage(
+                error: e.toString(),
+                stackTrace: kDebugMode ? stackTrace.toString() : null,
+              ),
+            ),
+          );
+        });
+      }
     });
 
     // broadcasts to the rest of the app what position in time the audio is at

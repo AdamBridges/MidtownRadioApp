@@ -68,7 +68,13 @@ class _OnDemandPageState extends State<OnDemandPage> {
           } else if (!snapshot.hasData || snapshot.data!.shows.isEmpty) {
             return Padding(
               padding: const EdgeInsets.all(32.0),
-              child: const Center(child: Text('No shows available. \nPlease ensure you are connected to the internet.', textAlign: TextAlign.center,)),
+              child: const Center(
+                child: Text(
+                  'No shows available. \nPlease ensure you are connected to the internet.', 
+                  textAlign: TextAlign.center, 
+                  style: TextStyle(fontSize: 18)
+                )
+              ),
             );
           } else {
             final List<PodcastShow> shows = snapshot.data!.shows;
