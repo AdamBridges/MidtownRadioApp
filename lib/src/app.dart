@@ -13,6 +13,7 @@ import 'package:ctwr_midtown_radio_app/src/home/view.dart';
 import 'package:ctwr_midtown_radio_app/src/listen_live/view.dart';
 import 'package:ctwr_midtown_radio_app/src/on_demand/view.dart';
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
 import 'package:ctwr_midtown_radio_app/src/open_url.dart';
 
@@ -34,6 +35,7 @@ class MidtownRadioApp extends StatelessWidget {
       navigatorKey: navigatorKey,
     );
   }
+  
 }
 
 class MidtownRadioStateful extends StatefulWidget {
@@ -173,6 +175,7 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
   @override
   void initState() {
     super.initState();
+    FlutterNativeSplash.remove();
 
     // catch errors - navigate to error page
     FlutterError.onError = (FlutterErrorDetails details) {
