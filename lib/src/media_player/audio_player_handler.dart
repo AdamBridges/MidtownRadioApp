@@ -24,15 +24,6 @@ class AudioPlayerHandler extends BaseAudioHandler {
       // get current media item for context
       final currentMediaItem = mediaItem.value;
 
-      // if (processingState == ProcessingState.completed) {
-      //   debugPrint("AudioPlayerHandler: Item COMPLETED by just_audio: '${currentMediaItem?.title}'");
-      //   debugPrint("  >> At actual player position: ${_player.position}"); // Get current position directly from player
-      //   debugPrint("  >> event.updatePosition was: ${event.updatePosition}");
-      //   debugPrint("  >> MediaItem perceived duration was: ${currentMediaItem?.duration}");
-      //   debugPrint("  >> just_audio _player.duration (last known): ${_player.duration}");
-      //   debugPrint("  >> CurrentIndex: $_currentIndex, Queue Length: ${_queue.length}");
-      // }
-
       playbackState.add(playbackState.value.copyWith(
         controls: _getControls(playing, processingState, currentMediaItem),
         systemActions: _getSystemActions(currentMediaItem),
@@ -40,7 +31,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
         playing: playing,
         bufferedPosition: event.bufferedPosition,
         speed: _player.speed,
-        queueIndex: _currentIndex,
+        queueIndex: _currentIndex, // Ensure queueIndex is updated
       ));
 
       // when current podcast is done, it auto advances to next in the show
@@ -52,33 +43,30 @@ class AudioPlayerHandler extends BaseAudioHandler {
           // stops at the end of an on-demand queue
           Future.microtask(() => stop());
         } else{
-          debugPrint("Yeah... this shouldnt happen. theres an error if the live stream 'completes'");
+          debugPrint("Error: Live stream should not 'complete'");
         }
-        
       }
     }, 
-    
     onError: (Object e, StackTrace stackTrace) {
       playbackState.add(playbackState.value.copyWith(
         processingState: AudioProcessingState.error,
         playing: false,
         errorMessage: 'Player error: $e',
       ));
-    // Avoid duplicate errors and error loops
-    final errorStr = e.toString();
-    debugPrint('Error: $e\n$stackTrace');
+      final errorStr = e.toString();
+      debugPrint('Error: $e\n$stackTrace');
     
-    WidgetsBinding.instance.addPostFrameCallback((_) async{
-      await navigatorKey.currentState?.pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => ErrorPage(
-            error: errorStr,
-            stackTrace: kDebugMode ? stackTrace.toString() : null,
+      WidgetsBinding.instance.addPostFrameCallback((_) async{
+        await navigatorKey.currentState?.pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => ErrorPage(
+              error: errorStr,
+              stackTrace: kDebugMode ? stackTrace.toString() : null,
+            ),
           ),
-        ),
-      );
-    });
+        );
       });
+    });
 
     // broadcasts to the rest of the app what position in time the audio is at
     // This happens roughly every second so a progress bar can be displayed
@@ -94,11 +82,6 @@ class AudioPlayerHandler extends BaseAudioHandler {
           updatePosition: position,
         ));
       }
-      // if it's a live stream, this listener will still fire from just_audio,
-      // but we are choosing not to update the audio_service PlaybackState's position with it.
-      // the position for a live stream might still be set to Duration.zero initially by setMediaItem
-      // or by the playbackEventStream if it provides a meaningful relative position for live DVR,
-      // but this dedicated frequent update is now skipped for live.
     });
 
     // ICY metadata holds info like the artist, song title and current radio programming in the LIVE broadcast
@@ -115,10 +98,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
       // Base has all the data of the currently playing audio
       // A lot of the attributes will be null for live music like artist, genre, etc. 
       final base = mediaItem.value;
-
-      // only use ICY if playing and loaded and live
-      if (base == null) return;
-      if (base.isLive != true) return;
+      if (base == null || base.isLive != true) return;
 
       // parse ICY metadata
       String session = '';
@@ -144,6 +124,8 @@ class AudioPlayerHandler extends BaseAudioHandler {
         } else if (parts.length == 2) {
           artist = parts[0].trim();
           title = parts[1].trim();
+        } else {
+          title = rawMetaData.trim(); // Fallback if format is unexpected
         }
       }
       
@@ -171,9 +153,9 @@ class AudioPlayerHandler extends BaseAudioHandler {
     _player.durationStream.listen((duration) {
        final currentMediaItem = mediaItem.value;
       // debugPrint("AudioPlayerHandler: DurationStream reported by just_audio for '${currentMediaItem?.title}': $duration");
-      if (currentMediaItem != null && duration != null && currentMediaItem.duration != duration) {
         // For live streams, duration might be null or Duration.zero 
         // Only update if it's a meaningful change, especially for on-demand.
+      if (currentMediaItem != null && duration != null && currentMediaItem.duration != duration) {
         if (currentMediaItem.isLive != true || (duration > Duration.zero)) {
             mediaItem.add(currentMediaItem.copyWith(duration: duration));
         }
@@ -182,17 +164,13 @@ class AudioPlayerHandler extends BaseAudioHandler {
 
     // broadcast update to app
     playbackState.add(playbackState.value.copyWith(
-      controls: [MediaControl.play, MediaControl.stop],
+      controls: [MediaControl.play, MediaControl.stop], // Initial minimal controls
       processingState: AudioProcessingState.idle,
       playing: false,
       updatePosition: Duration.zero,
       bufferedPosition: Duration.zero,
-      queueIndex: -1,
+      queueIndex: -1, // Initial queue index
     ));
-
-    // mediaItem.listen((item) {
-    //   debugPrint("AudioPlayerHandler: mediaItem changed: ${item?.title}, extras: ${item?.extras}");
-    // });
   }
 
   // helper to get state
@@ -218,16 +196,14 @@ class AudioPlayerHandler extends BaseAudioHandler {
       controls.add(MediaControl.pause);
       controls.add(MediaControl.stop);
     } else {
-      if (processingState == ProcessingState.ready ||
-          processingState == ProcessingState.completed ||
-          processingState == ProcessingState.idle ) {
-
-        if(mediaItem.value != null || (_queue.isNotEmpty && !isLive) ) { 
-          // can play if item exists, or if queue exists (for on-demand)
+      // Play is generally available if there's something to play (current item or queue)
+      if (mediaItem.value != null || (_queue.isNotEmpty && !isLive)) {
           controls.add(MediaControl.play);
-        }
       }
-      controls.add(MediaControl.stop);
+      // Stop is always available if not loading/buffering
+       if (processingState != ProcessingState.idle || mediaItem.value != null) {
+            controls.add(MediaControl.stop);
+       }
     }
 
     // Add queue navigation controls ONLY for on-demand content with a queue
@@ -245,12 +221,18 @@ class AudioPlayerHandler extends BaseAudioHandler {
   // helper to determine system actions based on media type
   Set<MediaAction> _getSystemActions(MediaItem? currentItem) {
     final bool isLive = currentItem?.isLive == true;
+    Set<MediaAction> actions = {MediaAction.stop}; // Stop is almost always available
+
+    if (_player.playing || mediaItem.value != null || _queue.isNotEmpty) {
+        actions.add(MediaAction.playPause);
+    }
+
+
     if (isLive) {
-      // no seek or queue navigation for basic live
-      return {MediaAction.playPause, MediaAction.stop};
+      // For live, only play/pause and stop
     } else {
-      // on-demand content - can go to next , seek forward and back
-      Set<MediaAction> actions = {MediaAction.seek};
+      // On-demand can seek
+      actions.add(MediaAction.seek);
       if (_queue.isNotEmpty) {
         if (_currentIndex > 0) {
           actions.add(MediaAction.skipToPrevious);
@@ -259,8 +241,8 @@ class AudioPlayerHandler extends BaseAudioHandler {
           actions.add(MediaAction.skipToNext);
         }
       }
-      return actions;
     }
+    return actions;
   }
 
   // getters for UI
@@ -272,6 +254,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
   Future<void> _playItemAtIndex(int index, {bool playWhenReady = true}) async {
     if (index < 0 || index >= _queue.length) {
       debugPrint("AudioPlayerHandler: _playItemAtIndex - Index out of bounds: $index");
+      await stop(); // Stop if index is invalid
       return;
     }
     _currentIndex = index;
@@ -285,28 +268,24 @@ class AudioPlayerHandler extends BaseAudioHandler {
       bufferedPosition: Duration.zero, 
       processingState: AudioProcessingState.loading,
       queueIndex: _currentIndex,
-      // controls will be updated by the playbackEventStream listener based on player state
+      // Controls and system actions will be updated by playbackEventStream and _getControls/_getSystemActions
     ));
 
     try {
       await _player.setAudioSource(
         AudioSource.uri(Uri.parse(newItemToPlay.id)), 
-        preload: false, 
-        initialPosition: Duration.zero,
+        preload: false,
+        initialPosition: Duration.zero, // Always start episodes from the beginning
       );
       if (playWhenReady) {
         _player.play();
       }
     } catch (e, stackTrace) {
       debugPrint("AudioPlayerHandler: Error setting audio source for queue item at index $index ('${newItemToPlay.title}'): $e\n$stackTrace");
-      
       playbackState.add(playbackState.value.copyWith(
         processingState: AudioProcessingState.error,
         playing: false,
         errorMessage: "Error loading: ${newItemToPlay.title}",
-        updatePosition: Duration.zero,
-        bufferedPosition: Duration.zero,
-        
       ));
     }
   }
@@ -314,99 +293,132 @@ class AudioPlayerHandler extends BaseAudioHandler {
   @override
   Future<void> updateQueue(List<MediaItem> queue) async {
     debugPrint("AudioPlayerHandler: Updating queue with ${queue.length} items.");
-    _queue = queue;
-    // update queue and broadcast updates to app
-    super.queue.add(_queue);
-    playbackState.add(playbackState.value.copyWith(controls: _getControls(_player.playing, _player.processingState, mediaItem.value)));
+    _queue = List.from(queue); // Ensure it's a new list instance
+    super.queue.add(_queue); // This updates the queue for audio_service UI (e.g., notification)
+    // After updating the queue, re-evaluate controls and system actions.
+    // The current mediaItem might still be valid or might need to be reset if it's not in the new queue.
+    // If _currentIndex is now invalid for the new queue, it should be reset.
+    if (_currentIndex >= _queue.length) {
+        _currentIndex = _queue.isNotEmpty ? 0 : -1;
+    }
+    playbackState.add(playbackState.value.copyWith(
+        controls: _getControls(_player.playing, _player.processingState, mediaItem.value),
+        systemActions: _getSystemActions(mediaItem.value),
+        queueIndex: _currentIndex // Reflect current index
+    ));
   }
 
   @override
   Future<void> skipToQueueItem(int index) async {
     if (mediaItem.value?.isLive == true) return;
-    debugPrint("AudioPlayerHandler: skipToQueueItem called for index $index");
-    if (index < 0 || index >= _queue.length) return;
+    debugPrint("AudioPlayerHandler: skipToQueueItem called for index $index. Current queue size: ${_queue.length}");
+    if (index < 0 || index >= _queue.length) {
+        debugPrint("AudioPlayerHandler: skipToQueueItem index $index is out of bounds for queue size ${_queue.length}.");
+        return;
+    }
+    // Update playback state to show loading for the new item
+    playbackState.add(playbackState.value.copyWith(processingState: AudioProcessingState.loading));
     await _playItemAtIndex(index, playWhenReady: true);
   }
 
   @override
   Future<void> skipToNext() async {
-    if (mediaItem.value?.isLive == true) return; // No next for live streams
-    // debugPrint("AudioPlayerHandler: skipToNext called. Current index: $_currentIndex, Queue size: ${_queue.length}");
+    if (mediaItem.value?.isLive == true) return;
     if (_currentIndex < _queue.length - 1) {
       await skipToQueueItem(_currentIndex + 1);
+    } else {
+      debugPrint("AudioPlayerHandler: Already at the end of the queue.");
+      // await stop(); 
     }
   }
 
   @override
   Future<void> skipToPrevious() async {
     if (mediaItem.value?.isLive == true) return;
-    debugPrint("AudioPlayerHandler: skipToPrevious called. Current index: $_currentIndex");
     if (_currentIndex > 0) {
       await skipToQueueItem(_currentIndex - 1);
-    }
-  }
-
-  
-  Future<void> setMediaItem(MediaItem newItem, {bool playWhenReady = false}) async {
-    bool isLive = newItem.isLive == true;
-    if (isLive) {
-      _queue = [newItem];
-      _currentIndex = 0;
-      super.queue.add(_queue);
-      await _playItemAtIndex(_currentIndex, playWhenReady: playWhenReady);
     } else {
-      // For a single on-demand item, behave as before (queue of one)
-      _queue = [newItem];
-      _currentIndex = 0;
-      super.queue.add(_queue);
-      await _playItemAtIndex(_currentIndex, playWhenReady: playWhenReady);
+      debugPrint("AudioPlayerHandler: Already at the beginning of the queue.");
     }
   }
   
-  Future<void> customSetStream(MediaItem newItem, {bool playWhenReady = true}) async {
-    await setMediaItem(newItem, playWhenReady: playWhenReady);
+  // This method is for setting single items, like a live stream, or a one-off file.
+  // It's often an override from BaseAudioHandler if you intend to handle addQueueItem or setItem.
+  // For podcast shows, use customSetStream (renamed/repurposed below) or a new dedicated method.
+  Future<void> setMediaItem(MediaItem newItem, {bool playWhenReady = false}) async {
+    // This will treat the newItem as a queue of one.
+    _queue = [newItem];
+    _currentIndex = 0; // Will be set by _playItemAtIndex
+    super.queue.add(_queue); // Update audio_service queue
+    await _playItemAtIndex(0, playWhenReady: playWhenReady); // Play the single item
+  }
+  
+  /// Sets the current playlist to the given list of MediaItems (e.g., all episodes of a podcast show)
+  /// and starts playing the item at initialIndex.
+  Future<void> setPodcastShowQueue(List<MediaItem> podcastShowEpisodes, int initialIndex, {bool playWhenReady = true}) async {
+    if (podcastShowEpisodes.isEmpty) {
+      debugPrint("AudioPlayerHandler: setPodcastShowQueue called with empty episode list.");
+      await stop(); // Stop playback and clear current state if queue is empty
+      mediaItem.add(null);
+      _queue = [];
+      super.queue.add(_queue);
+      _currentIndex = -1;
+      playbackState.add(playbackState.value.copyWith(
+        processingState: AudioProcessingState.idle,
+        queueIndex: _currentIndex,
+        controls: _getControls(false, ProcessingState.idle, null),
+        systemActions: _getSystemActions(null),
+      ));
+      return;
+    }
+
+    if (initialIndex < 0 || initialIndex >= podcastShowEpisodes.length) {
+      debugPrint("AudioPlayerHandler: setPodcastShowQueue received invalid initialIndex $initialIndex for queue of ${podcastShowEpisodes.length}. Defaulting to 0.");
+      initialIndex = 0; 
+    }
+
+    _queue = List.from(podcastShowEpisodes); // Make a mutable copy for internal use
+    super.queue.add(List.from(podcastShowEpisodes)); // Broadcast an immutable copy to audio_service
+
+    // _currentIndex will be set correctly by _playItemAtIndex
+    // mediaItem will also be updated by _playItemAtIndex
+    await _playItemAtIndex(initialIndex, playWhenReady: playWhenReady);
   }
 
   @override
   Future<void> play() async {
     if (_player.playing) return;
 
-    // Fallback to existing play logic for on-demand, or if live stream wasn't prepared
-    // debugPrint("AudioPlayerHandler: Standard play call.");
+    // debugPrint("AudioPlayerHandler: Play method. CurrentIndex: $_currentIndex, Queue Length: ${_queue.length}, CurrentMediaItem: ${mediaItem.value?.title}");
+
     if (_currentIndex != -1 && _currentIndex < _queue.length) {
-      if (_player.audioSource != null) {
+      // If there's a valid current item in the queue that matches the player's perception or needs loading
+      final currentQueueItem = _queue[_currentIndex];
+      final currentPlayerSourceUri = (_player.audioSource as UriAudioSource?)?.uri.toString();
+
+      if (_player.audioSource != null && currentPlayerSourceUri == currentQueueItem.id) {
+        // Source is loaded and matches, just play
         await _player.play();
       } else {
-        // If player was stopped and source is null, _playItemAtIndex will set it and play
+        // Source is not loaded, or doesn't match (e.g., after stop() or queue change), reload and play current item
+        // debugPrint("AudioPlayerHandler: Play - Source mismatch or null. Reloading item at index $_currentIndex: ${currentQueueItem.title}");
         await _playItemAtIndex(_currentIndex, playWhenReady: true);
       }
+    } else if (_queue.isNotEmpty) {
+      // If there's no valid _currentIndex BUT there is a queue (e.g., after stop() or initially)
+      // Default to playing the first item in the queue.
+      // debugPrint("AudioPlayerHandler: Play - No current index, but queue exists. Playing from start of queue (index 0).");
+      await _playItemAtIndex(0, playWhenReady: true);
     } else if (mediaItem.value != null) {
-      // If no queue context but a single media item was set
-      if (_player.audioSource == null || (_player.audioSource?.sequence.first.tag as UriAudioSource?)?.uri.toString() != mediaItem.value!.id) {
-          // If current source is not what mediaItem says, or no source, set it and play
-          await setMediaItem(mediaItem.value!, playWhenReady: true);
-      } else {
-          await _player.play(); // Source is already set
-      }
-    } else {
-      debugPrint("AudioPlayerHandler: Play called but no media item to play.");
+        // No queue, but a single mediaItem might have been set previously (e.g. a live stream via setMediaItem)
+        // Attempt to play this single item. setMediaItem will create a temporary queue for it.
+        debugPrint("AudioPlayerHandler: Play - No queue, trying to play current mediaItem.value directly: ${mediaItem.value?.title}");
+        await setMediaItem(mediaItem.value!, playWhenReady: true); // This will queue and play it as a single item
     }
-    
+     else {
+      debugPrint("AudioPlayerHandler: Play called but no media or queue to play effectively.");
+    }
   }
-
-  //   if (_currentIndex != -1 && _currentIndex < _queue.length) {
-  //     // if there's a queued item (live or on-demand)
-  //     if (_player.audioSource != null) {
-  //       await _player.play();
-  //     } else {
-  //       // if player was stopped and source is null, reload current item
-  //       await _playItemAtIndex(_currentIndex, playWhenReady: true);
-  //     }
-  //   } else if (mediaItem.value != null) {
-  //     // if no queue context but a single media item was set (e.g. live stream directly)
-  //     await _player.play();
-  //   }
-  // }
 
   @override
   Future<void> pause() async {
@@ -417,26 +429,25 @@ class AudioPlayerHandler extends BaseAudioHandler {
   Future<void> stop() async {
     await _player.stop();
 
-    final bool wasLive = mediaItem.value?.isLive == true;
-    if (!wasLive) {
-        _currentIndex = -1;
-    }
+    // For on-demand, set current index to -1 to indicate no specific item is "current"
+    // but the queue itself remains for potential restart.
+    
+    // Update playback state to idle, but keep media item and queue if appropriate
     playbackState.add(playbackState.value.copyWith(
-        queueIndex: _currentIndex,
-        controls: _getControls(false, ProcessingState.idle, mediaItem.value)
+        processingState: AudioProcessingState.idle,
+        playing: false,
+        // updatePosition: Duration.zero,
+        // queueIndex: _currentIndex,
+        controls: _getControls(false, ProcessingState.idle, mediaItem.value),
+        systemActions: _getSystemActions(mediaItem.value)
     ));
   }
 
   @override
   Future<void> seek(Duration position) async {
-    // seeking should generally be disabled for live streams
     if (mediaItem.value?.isLive == true) return;
-
-    // debugPrint("AudioPlayerHandler: Attempting to seek to $position");
-    playbackState.add(playbackState.value.copyWith(updatePosition: position));
     try {
       await _player.seek(position);
-      //debugPrint("AudioPlayerHandler: Seek to $position completed by player.");
     } catch (e) {
       debugPrint("AudioPlayerHandler: Error during seek: $e");
     }

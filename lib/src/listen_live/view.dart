@@ -46,13 +46,15 @@ class ListenLivePage extends StatelessWidget {
                                 audioPlayerHandler.play();
                               }
                             } else {
-                              audioPlayerHandler.customSetStream(
+                              audioPlayerHandler.setMediaItem(
                                 MediaItem(
                                   id: 'https://midtownradiokw.out.airtime.pro/midtownradiokw_a',
                                   title: "Midtown Radio KW",
                                   isLive: true
-                              ));
-                              audioPlayerHandler.play();
+                                ),
+                                playWhenReady: true
+                              );
+                              //audioPlayerHandler.play();
                             }
                             }, 
                           style: ButtonStyle(

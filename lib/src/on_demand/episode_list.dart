@@ -235,8 +235,28 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
             ),
           ),
           if (widget.show.description != null && widget.show.description!.isNotEmpty) SliverToBoxAdapter(child: Padding(
-            padding: const EdgeInsets.all(32.0),
-            child: Center(child: Text(widget.show.description!)),
+            padding: const EdgeInsets.all(16.0),
+            child: ReadMoreText(
+              widget.show.description!,
+              trimLines: 3,   
+              trimMode: TrimMode.Line,                 
+              style: Theme.of(context).textTheme.bodyMedium!,
+              trimCollapsedText: ' more',
+              trimExpandedText: ' less',
+              delimiter: '... ',
+              textAlign: TextAlign.center,
+            
+              moreStyle: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+                
+              ),
+            
+              lessStyle: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
           )),
           SliverToBoxAdapter(child: Padding(
             padding: const EdgeInsets.only(bottom:8.0),
@@ -263,7 +283,7 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
                   }
                   if (index >= displayedEpisodes.length) return const SizedBox.shrink();
                   final Episode episode = displayedEpisodes[index];
-                  return _EpisodeListTile(episode: episode);
+                  return _EpisodeListTile(episode: episode, show: widget.show);
                 },
                 childCount: displayedEpisodes.length + (_isLoadingMore && displayedEpisodes.length < _episodes.length ? 1 : 0),
               ),
@@ -277,7 +297,8 @@ class _EpisodeListPageState extends State<EpisodeListPage> {
 // view of one single episode - clickable to set stream
 class _EpisodeListTile extends StatefulWidget {
   final Episode episode;
-  const _EpisodeListTile({required this.episode});
+  final PodcastShow show;
+  const _EpisodeListTile({required this.episode, required this.show});
 
   @override
   State<_EpisodeListTile> createState() => _EpisodeListTileState();
@@ -336,26 +357,94 @@ class _EpisodeListTileState extends State<_EpisodeListTile> {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           // ontap - set url and start playin'
-          onTap: widget.episode.episodeStreamUrl.isNotEmpty ? () {
-            // debugPrint("url: ${episode.episodeStreamUrl}");
-            final toPlay = MediaItem(
-                id: widget.episode.episodeStreamUrl,
-                title: widget.episode.episodeName,
-                album: widget.episode.podcastName,
-                artUri: Uri.parse(imageUrlToDisplay),
-                // duration: null,
-                duration: widget.episode.duration != null && widget.episode.duration!.contains(':')
-                  ? _parseDurationToSystem(widget.episode.duration!) 
-                  : (widget.episode.duration != null ? Duration(seconds: int.tryParse(widget.episode.duration!) ?? 0) : null),
-                extras: {'description': widget.episode.episodeDescription ?? ''}
-              );
-            // debugPrint("\n\nTo Play: $toPlay\n\n");
+          // Presuming in your widget you have access to:
+// final PodcastShow currentShow; // The show object that widget.episode belongs to.
+// final Episode selectedEpisode = widget.episode; // The specific episode tapped.
+// And audioPlayerHandler is your AudioPlayerHandler instance.
+// Also, ensure _parseDurationToSystem is accessible.
 
-            // this starts playing episode
-            audioPlayerHandler.customSetStream(
-              toPlay
-            );
-          } : null,
+onTap: widget.episode.episodeStreamUrl.isNotEmpty ? () {
+    // 1. Get all episodes from the current show.
+    // Assuming 'currentShow' is available and has an 'episodes' list.
+    final List<Episode> allEpisodesInShow = widget.show.episodes;
+
+    // 2. Find the index of the selected episode.
+    // Using guid for a more reliable match, assuming Episode has a unique guid.
+    int selectedEpisodeIndex = allEpisodesInShow.indexWhere(
+        (ep) => ep.guid == widget.episode.guid // Match by a unique ID like guid
+    );
+
+    if (selectedEpisodeIndex == -1) {
+        // Fallback if guid isn't available or matching fails, try by stream URL or name, though less reliable.
+        selectedEpisodeIndex = allEpisodesInShow.indexWhere(
+            (ep) => ep.episodeStreamUrl == widget.episode.episodeStreamUrl
+        );
+        if (selectedEpisodeIndex == -1) {
+            debugPrint("Error: Selected episode not found in the show's list. Cannot play.");
+            // Optionally show a message to the user.
+            return; 
+        }
+    }
+
+    // 3. Convert all Episode objects in the show to MediaItem objects.
+    List<MediaItem> mediaItemQueue = allEpisodesInShow.map((ep) {
+        // Determine the image URL for this specific episode 'ep'.
+        // Prefer episode-specific image, fallback to podcast image, then a generic placeholder.
+        String artImageUrl = ep.episodeSpecificImageUrl ?? ep.podcastImageUrl;
+        // Ensure the URL is valid and absolute.
+        if (artImageUrl.isEmpty || !(artImageUrl.startsWith('http://') || artImageUrl.startsWith('https://'))) {
+            artImageUrl = 'https://via.placeholder.com/150/000000/FFFFFF/?text=No+Art'; // A generic placeholder
+        }
+        
+        // Parse duration string. Ensure _parseDurationToSystem is available in this scope.
+        // If _parseDurationToSystem is part of your widget, call it as widget._parseDurationToSystem.
+        // If it's a global/static utility, call it directly.
+        Duration? episodeDuration;
+        if (ep.duration != null) {
+            if (ep.duration!.contains(':')) {
+                // Assuming _parseDurationToSystem exists and is accessible:
+                // episodeDuration = _parseDurationToSystem(ep.duration!);
+                // If it's not available, you'll need to implement or import it.
+                // For now, let's use a simplified version if _parseDurationToSystem is missing.
+                 try {
+                    final parts = ep.duration!.split(':');
+                    if (parts.length == 2) {
+                       episodeDuration = Duration(minutes: int.parse(parts[0]), seconds: int.parse(parts[1]));
+                    } else if (parts.length == 3) {
+                       episodeDuration = Duration(hours: int.parse(parts[0]), minutes: int.parse(parts[1]), seconds: int.parse(parts[2]));
+                    }
+                 } catch (e) { /* ignore parsing error, duration will be null */ }
+
+            } else {
+                episodeDuration = Duration(seconds: int.tryParse(ep.duration!) ?? 0);
+            }
+        }
+
+
+        return MediaItem(
+            id: ep.episodeStreamUrl, // Crucial: This must be the actual stream URL.
+            title: ep.episodeName,
+            album: ep.podcastName, // This is usually the PodcastShow's title.
+            artist: ep.podcastName, // Often the podcast show is the "artist" for episodes.
+            artUri: Uri.parse(artImageUrl),
+            duration: episodeDuration,
+            extras: {
+                'description': ep.episodeDescription ?? '',
+                // You can add other relevant data from the Episode object here.
+                'guid': ep.guid,
+            },
+            // Mark as not live, which is typical for podcast episodes.
+            // isLive: false, // audio_service MediaItem defaults isLive to false
+        );
+    }).toList();
+
+    // 4. Call the new method in AudioPlayerHandler.
+    audioPlayerHandler.setPodcastShowQueue(
+      mediaItemQueue,
+      selectedEpisodeIndex,
+      // playWhenReady: true is the default in setPodcastShowQueue
+    );
+} : null,
           child: Padding(
             padding: const EdgeInsets.all(12.0),
             child: Column(
