@@ -12,6 +12,7 @@ import 'package:ctwr_midtown_radio_app/src/settings/service.dart';
 import 'package:audio_service/audio_service.dart';
 
 import 'package:ctwr_midtown_radio_app/src/media_player/audio_player_handler.dart';
+import 'package:provider/provider.dart';
 
 // Initiate singleton for app access to system audio controls
 late AudioHandler audioHandler;
@@ -21,10 +22,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final settingsController = SettingsController(SettingsService());
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey();
+
 
   OnDemand.primeCache(); 
 
-  audioPlayerHandler = AudioPlayerHandler();
+  audioPlayerHandler = AudioPlayerHandler(navigatorKey: navigatorKey);
   
   audioHandler = await AudioService.init(
     builder: () => audioPlayerHandler,
@@ -47,6 +50,8 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
   
-  runApp(MidtownRadioApp(settingsController: settingsController));
-
+  runApp(MidtownRadioApp(
+    settingsController: settingsController,
+    navigatorKey: navigatorKey,
+  ));
 }

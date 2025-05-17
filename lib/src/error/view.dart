@@ -1,35 +1,136 @@
+import 'package:ctwr_midtown_radio_app/src/open_url.dart';
 import 'package:flutter/material.dart';
 import 'package:ctwr_midtown_radio_app/src/home/view.dart';
+import 'package:provider/provider.dart';
 
 class ErrorPage extends StatelessWidget {
-  const ErrorPage({super.key});
+  const ErrorPage({
+    super.key,
+    required this.error,
+    required this.stackTrace
+  });
 
   static const routeName = '/error';
+  static const String title = 'Oops! Something Went Wrong';
+  final String? stackTrace;
+  final String error;
 
-  static const String title = 'Error';
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      body: Center(
+      appBar: AppBar(
+        title: const Text(title),
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(Icons.error, size: 100),
-            SizedBox(height: 20),
-            Text(
-              'An error occurred',
-              style: TextStyle(fontSize: 24),
+            Icon(
+              Icons.error_outline_rounded,
+              size: 80,
+              color: colorScheme.error,
             ),
-            SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pushNamed(context, HomePage.routeName);
-              },
-              child: Text('Back to Home'))
+            const SizedBox(height: 24),
+            Text(
+              'We encountered an issue',
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.error,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Card(
+              elevation: 2,
+              color: colorScheme.errorContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Error Details:',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: colorScheme.onErrorContainer,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      error,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onErrorContainer,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+            Text(
+              'Please try again or report this issue to help us improve.',
+              style: theme.textTheme.bodyLarge,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 40),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FilledButton.tonal(
+                  onPressed: () {
+                    Navigator.pushReplacementNamed(
+                      context, 
+                      HomePage.routeName
+                    );
+                  },
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24, 
+                      vertical: 16
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.home_rounded),
+                      SizedBox(width: 8),
+                      Text('Return Home'),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                FilledButton(
+                  onPressed: () => openUrl(true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colorScheme.error,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24, 
+                      vertical: 16
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.bug_report_rounded),
+                      SizedBox(width: 8),
+                      Text('Report Issue'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
-      ),
+      ), 
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'package:ctwr_midtown_radio_app/src/open_url.dart';
 import 'package:flutter/material.dart';
 
 class MainAppDrawer extends StatelessWidget {
@@ -44,6 +45,13 @@ class MainAppDrawer extends StatelessWidget {
               Navigator.pushNamed(context, '/settings');
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.link),
+            title: const Text("Our Site"),
+            onTap: () {
+              openUrl(false);
+            }
+          )
         ],
       ),
     );
