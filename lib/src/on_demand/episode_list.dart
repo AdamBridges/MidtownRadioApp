@@ -367,12 +367,12 @@ class _EpisodeListTileState extends State<_EpisodeListTile> {
               if (selectedEpisodeIndex == -1) {
                   // fallback if guid isn't available or matching fails, try by stream URL or name, though less reliable.
                   selectedEpisodeIndex = allEpisodesInShow.indexWhere(
-                      (ep) => ep.episodeStreamUrl == widget.episode.episodeStreamUrl
+                    (ep) => ep.episodeStreamUrl == widget.episode.episodeStreamUrl
                   );
                   if (selectedEpisodeIndex == -1) {
-                      debugPrint("Error: Selected episode not found in the show's list. Cannot play.");
-                      // Optionally show a message to the user.
-                      return; 
+                    // debugPrint("Error: Selected episode not found in the show's list. Cannot play.");
+                    // Optionally show a message to the user.
+                    return; 
                   }
               }
 

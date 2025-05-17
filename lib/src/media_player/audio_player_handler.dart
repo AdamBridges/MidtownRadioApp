@@ -39,8 +39,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
 
       // when current podcast is done, it auto advances to next in the show
       if (processingState == ProcessingState.completed) {
-        debugPrint(_player.position.toString());
-        debugPrint(currentMediaItem?.duration.toString());
+
         // sometimes theres an issue caused by the backend 
         // where the audio sees the full duration, ie 55 mins, and sees the player position is like 0:00
         // and it still makrs it "complete"
@@ -71,7 +70,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
             // stops at the end of an on-demand queue
             Future.microtask(() => stop());
           } else{
-            debugPrint("Error: Live stream should not 'complete'");
+            // debugPrint("Error: Live stream should not 'complete'");
           }
         }
       }
@@ -299,7 +298,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
   // for on demand items - tries to load and play item at given index in queue
   Future<void> _playItemAtIndex(int index, {bool playWhenReady = true}) async {
     if (index < 0 || index >= _queue.length) {
-      debugPrint("AudioPlayerHandler: _playItemAtIndex - Index out of bounds: $index");
+      // debugPrint("AudioPlayerHandler: _playItemAtIndex - Index out of bounds: $index");
       await stop(); // Stop if index is invalid
       return;
     }
@@ -327,7 +326,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
         _player.play();
       }
     } catch (e, stackTrace) {
-      debugPrint("AudioPlayerHandler: Error setting audio source for queue item at index $index ('${newItemToPlay.title}'): $e\n$stackTrace");
+      // debugPrint("AudioPlayerHandler: Error setting audio source for queue item at index $index ('${newItemToPlay.title}'): $e\n$stackTrace");
       playbackState.add(playbackState.value.copyWith(
         processingState: AudioProcessingState.error,
         playing: false,
@@ -359,7 +358,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
     if (mediaItem.value?.isLive == true) return;
     // debugPrint("AudioPlayerHandler: skipToQueueItem called for index $index. Current queue size: ${_queue.length}");
     if (index < 0 || index >= _queue.length) {
-        debugPrint("AudioPlayerHandler: skipToQueueItem index $index is out of bounds for queue size ${_queue.length}.");
+        // debugPrint("AudioPlayerHandler: skipToQueueItem index $index is out of bounds for queue size ${_queue.length}.");
         return;
     }
     // Update playback state to show loading for the new item
@@ -373,7 +372,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
     if (_currentIndex < _queue.length - 1) {
       await skipToQueueItem(_currentIndex + 1);
     } else {
-      debugPrint("AudioPlayerHandler: Already at the end of the queue.");
+      // ("AudioPlayerHandler: Already at the end of the queue.");
       // await stop(); 
     }
   }
@@ -384,7 +383,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
     if (_currentIndex > 0) {
       await skipToQueueItem(_currentIndex - 1);
     } else {
-      debugPrint("AudioPlayerHandler: Already at the beginning of the queue.");
+      // debugPrint("AudioPlayerHandler: Already at the beginning of the queue.");
     }
   }
   
@@ -403,7 +402,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
   /// and starts playing the item at initialIndex.
   Future<void> setPodcastShowQueue(List<MediaItem> podcastShowEpisodes, int initialIndex, {bool playWhenReady = true}) async {
     if (podcastShowEpisodes.isEmpty) {
-      debugPrint("AudioPlayerHandler: setPodcastShowQueue called with empty episode list.");
+      // debugPrint("AudioPlayerHandler: setPodcastShowQueue called with empty episode list.");
       await stop(); // Stop playback and clear current state if queue is empty
       mediaItem.add(null);
       _queue = [];
@@ -419,7 +418,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
     }
 
     if (initialIndex < 0 || initialIndex >= podcastShowEpisodes.length) {
-      debugPrint("AudioPlayerHandler: setPodcastShowQueue received invalid initialIndex $initialIndex for queue of ${podcastShowEpisodes.length}. Defaulting to 0.");
+      // debugPrint("AudioPlayerHandler: setPodcastShowQueue received invalid initialIndex $initialIndex for queue of ${podcastShowEpisodes.length}. Defaulting to 0.");
       initialIndex = 0; 
     }
 
@@ -462,7 +461,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
         await setMediaItem(mediaItem.value!, playWhenReady: true); // This will queue and play it as a single item
     }
      else {
-      debugPrint("AudioPlayerHandler: Play called but no media or queue to play effectively.");
+      // debugPrint("AudioPlayerHandler: Play called but no media or queue to play effectively.");
     }
   }
 
@@ -495,7 +494,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
     try {
       await _player.seek(position);
     } catch (e) {
-      debugPrint("AudioPlayerHandler: Error during seek: $e");
+      // debugPrint("AudioPlayerHandler: Error during seek: $e");
     }
   }
 

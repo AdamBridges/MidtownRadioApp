@@ -113,10 +113,10 @@ class OnDemand {
       _fetchCompleter!.complete(_cachedInstance);
       return _cachedInstance!;
     } catch (e, s) {
-      debugPrint("OnDemand.create: Error during fetch operation: $e\n$s");
+      // debugPrint("OnDemand.create: Error during fetch operation: $e\n$s");
       // If fetch fails but an old cached instance exists, complete with old data
       if (_cachedInstance != null) {
-        debugPrint("OnDemand.create: Fetch failed. Returning stale cached data.");
+        // debugPrint("OnDemand.create: Fetch failed. Returning stale cached data.");
         _fetchCompleter!.completeError(e, s);
         return _cachedInstance!;
       }
@@ -140,7 +140,7 @@ class OnDemand {
       await create(); 
       //debugPrint("OnDemand.primeCache: Cache priming attempt finished.");
     } catch (e) {
-      debugPrint("OnDemand.primeCache: Error during cache priming: $e. App will proceed with potentially stale or no cache.");
+      // debugPrint("OnDemand.primeCache: Error during cache priming: $e. App will proceed with potentially stale or no cache.");
       // Errors during priming are logged but don't necessarily stop app startup.
       // The next call to create() will attempt to fetch again if needed.
     }
@@ -231,10 +231,10 @@ class OnDemand {
             feedUrl: url,
           ));
         } else {
-          debugPrint('Failed to load RSS feed ($url): ${response.statusCode}');
+          // debugPrint('Failed to load RSS feed ($url): ${response.statusCode}');
         }
-      } catch (e, s) {
-        debugPrint('Error processing RSS feed ($url): $e\n$s');
+      } catch (e/*, s*/) {
+        // debugPrint('Error processing RSS feed ($url): $e\n$s');
       }
     }
 
@@ -304,15 +304,15 @@ class _Streams {
             }
             return mergedStreams;
         } else {
-            debugPrint("Remote feed URL list was empty. Using fallback: ${_fallback.length} URLs.");
+            // debugPrint("Remote feed URL list was empty. Using fallback: ${_fallback.length} URLs.");
             return _fallback;
         }
       } else {
-        debugPrint('Failed to fetch remote feed URLs (Code: ${resp.statusCode}). Using fallback.');
+        // debugPrint('Failed to fetch remote feed URLs (Code: ${resp.statusCode}). Using fallback.');
         return _fallback;
       }
     } catch (e) {
-      debugPrint('Error fetching remote feed URLs: $e. Using fallback.');
+      // debugPrint('Error fetching remote feed URLs: $e. Using fallback.');
       return _fallback;
     }
   }

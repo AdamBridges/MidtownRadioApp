@@ -198,7 +198,7 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
     if (_lastError == errorStr || !mounted) return;
     _lastError = errorStr;
 
-    debugPrint('Error: $error\n$stack');
+    //debugPrint('Error: $error\n$stack');
     
     WidgetsBinding.instance.addPostFrameCallback((_) async{
       await widget.navigatorKey.currentState?.pushReplacement(
