@@ -13,6 +13,8 @@ class AudioPlayerHandler extends BaseAudioHandler {
   // for On-Demand Media, we queue up next song in the podcast so use can click "next"
   List<MediaItem> _queue = [];
   int _currentIndex = -1;
+  // flag to prevent multiple skips at the same time, causing an error.
+  bool _isProcessingSkip = false;
 
   Stream<Duration> get positionStream => _player.positionStream;
   final GlobalKey<NavigatorState> navigatorKey;
@@ -368,23 +370,32 @@ class AudioPlayerHandler extends BaseAudioHandler {
 
   @override
   Future<void> skipToNext() async {
-    if (mediaItem.value?.isLive == true) return;
+    if (mediaItem.value?.isLive == true || _isProcessingSkip) return;
+    _isProcessingSkip = true;
+
     if (_currentIndex < _queue.length - 1) {
       await skipToQueueItem(_currentIndex + 1);
     } else {
       // ("AudioPlayerHandler: Already at the end of the queue.");
       // await stop(); 
     }
+    _isProcessingSkip = false;
   }
 
   @override
   Future<void> skipToPrevious() async {
-    if (mediaItem.value?.isLive == true) return;
+    if (mediaItem.value?.isLive == true || _isProcessingSkip) return;
+    _isProcessingSkip = true;
+
     if (_currentIndex > 0) {
       await skipToQueueItem(_currentIndex - 1);
     } else {
-      // debugPrint("AudioPlayerHandler: Already at the beginning of the queue.");
+      // ("AudioPlayerHandler: Already at the end of the queue.");
+      // await stop(); 
     }
+
+    _isProcessingSkip = false;
+
   }
   
   // This method is for setting single items, like a live stream, or a one-off file.
