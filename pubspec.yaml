@@ -114,6 +114,17 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 
-flutter_native_splash:
-  color: "#141218"  # Dark background color
-  image: /assets/icon_variations/mic_red_on_grey_cropped.jpg
+# * NOTE: I had to run this differently for android and IOS
+# android requires circle, but for IOS I could make the full logo
+# I think the full is nicer but I was forced to use circle on android
+# flutter_native_splash:
+#   color: "#141218"  # Dark background color
+#   image: assets/icon_variations/mic_red_shrunk.png
+#   android: true
+#   ios: false
+#   # android_gravity: center
+#   android_12:
+#     image: assets/icon_variations/mic_red_shrunk.png
+#     icon_background_color: "#141218"
+#     #image_dark: assets/images/logo_main.png
+#     #icon_background_color_dark: "#141218"
