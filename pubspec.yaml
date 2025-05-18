@@ -81,10 +81,13 @@ flutter:
   # To add custom native code (platform-specific implementation) to your
   generate: true
 
-  # To add assets to your application, add an assets section, like this:
+  # only including required assets for smaller build, but I will leave the files there for dev reference
+  # if they are not included here, they will not be included in production build and so are not bloat
   assets:
-    - assets/
-    - assets/images/
+    - assets/images/hashtag-local-af.png
+    - assets/images/logo_main.png
+    - assets/images/we-play-local-music.png
+    - assets/images/logo_mic_black_on_white.png
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 
