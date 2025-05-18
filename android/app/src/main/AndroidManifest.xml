@@ -10,7 +10,7 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
     <application
-        android:label="Midtown Radio KW"
+        android:label="Midtown Radio"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity

@@ -65,6 +65,7 @@ class _FullScreenPlayerModalState extends State<FullScreenPlayerModal> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
                   child: Column(
+                    //mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: <Widget>[
                       Align(
                         alignment: Alignment.centerLeft,
@@ -201,7 +202,7 @@ class _FullScreenPlayerModalState extends State<FullScreenPlayerModal> {
                           ),
                         ),
                 
-                      const SizedBox(height: 20),
+                      //const SizedBox(height: 10),
                 
                       // Playback controls
                       Padding(

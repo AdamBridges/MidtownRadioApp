@@ -43,5 +43,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-/android/app/cxx/
+/android/app/.cxx/
+
+# Ignore iOS and CocoaPods build artifacts
+# I dont really know why Pods is in android folder honestly 
+/android/build/ios/Pods.build/
+/android/build/
+
 
