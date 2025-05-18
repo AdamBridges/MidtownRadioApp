@@ -101,17 +101,13 @@ class AudioPlayerHandler extends BaseAudioHandler {
           ),
         );
       } else {
-        // navigate to ErrorPage for other errors
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          navigatorKey.currentState?.pushReplacement(
-            MaterialPageRoute(
-              builder: (_) => ErrorPage(
-                error: e.toString(),
-                stackTrace: kDebugMode ? stackTrace.toString() : null,
-              ),
-            ),
-          );
-        });
+        Future.microtask(() => stop());
+        mainScaffoldKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text('Sorry, this audio can\'t be played at the moment.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     });
 

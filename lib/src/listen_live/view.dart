@@ -47,6 +47,7 @@ class ListenLivePage extends StatelessWidget {
                                 audioPlayerHandler.play();
                               }
                             } else {
+                              // debugPrint("ran first time");
                               audioPlayerHandler.setMediaItem(
                                 MediaItem(
                                   id: 'https://midtownradiokw.out.airtime.pro/midtownradiokw_a',
@@ -91,10 +92,32 @@ class ListenLivePage extends StatelessWidget {
                     ),
                   ),
 
-                  if (audioPlayerHandler.mediaItem.value?.isLive == true)
-                    SizedBox(height: 36)
-                  else if (audioPlayerHandler.mediaItem.value == null)
-                    SizedBox(height: 127)
+                  // offset so play button doesnt jitter when bottom player pops up
+                  StreamBuilder<MediaItem?>(
+                      stream: audioHandler.mediaItem,
+                      builder: (context, mediaSnapshot) {
+                        final mediaItem = mediaSnapshot.data;
+                        return StreamBuilder<PlaybackState>(
+                          stream: audioHandler.playbackState,
+                          builder: (context, stateSnapshot) {
+                            final playbackState = stateSnapshot.data;
+                            final processingState = playbackState?.processingState ??
+                                AudioProcessingState.idle;
+              
+                            final showPlayer = mediaItem != null &&
+                                processingState != AudioProcessingState.idle;
+                            // This is not an ideal solution, but it works okay.
+                            if (showPlayer && audioPlayerHandler.mediaItem.value?.isLive == true){
+                              return SizedBox(height: 36);
+                            } else if (!showPlayer){
+                              return SizedBox(height: 127);
+                            }
+                            return SizedBox.shrink();
+                          },
+                        );
+                      },
+                    ),
+                  
                 ],
               ),
             );
