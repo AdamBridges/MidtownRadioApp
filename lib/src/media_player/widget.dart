@@ -1,5 +1,6 @@
 // lib/src/media_player/widget.dart
 import 'package:ctwr_midtown_radio_app/main.dart';
+import 'package:ctwr_midtown_radio_app/src/media_player/audio_player_handler.dart';
 import 'package:ctwr_midtown_radio_app/src/media_player/progress_bar.dart';
 // import 'package:ctwr_midtown_radio_app/src/media_player/audio_player_handler.dart';
 import 'package:flutter/material.dart';
@@ -11,11 +12,11 @@ class PlayerWidget extends StatefulWidget {
   final GlobalKey<NavigatorState> navigatorKey;
   final ValueNotifier<bool> isModalOpen;
 
-  // I was thinking of adding swipe gestures to skip to next or previous, but have not been able to do it yet
-  // so all of it is commented out for now.
-
-  // static const double _horizontalSwipeThreshold = 75.0;
-  // static const double _minSwipeVelocity = 200.0;
+  // for swipe to skip
+  // right now, there is no feedback for user midswipe, 
+  // may be good to add like a carousel effect or soemthing
+  static const double _minSwipeVelocity = 800.0; // Higher value = more deliberate swipes
+  static const double _horizontalSwipeThreshold = 50.0; // Minimum horizontal movement
   
   const PlayerWidget({
     super.key,
@@ -66,6 +67,7 @@ class _PlayerWidgetState extends State<PlayerWidget> {
     final mediaQuery = MediaQuery.of(context);
     final safePadding = mediaQuery.viewPadding.bottom;
     final theme = Theme.of(context);
+    double dragDistance = 0.0;
 
     return StreamBuilder<MediaItem?>(
       stream: audioHandler.mediaItem,
@@ -97,29 +99,33 @@ class _PlayerWidgetState extends State<PlayerWidget> {
         return GestureDetector(
           onTap: hasMedia ? () => _showFullScreenPlayer(widget.navigatorKey.currentContext!) : null,
           
-          // more stuff for drag to skip/previous -- to be implemented
-          // onHorizontalDragEnd: !isLiveStream && hasMedia
-          //     ? (details) {
-          //         final currentPlaybackState = audioHandler.playbackState.value; // Get current playback state
-          //         if (details.primaryVelocity != null && details.primaryVelocity!.abs() > _minSwipeVelocity) {
-          //           // Check actual displacement as well to avoid accidental mini-drags
-          //           // This check might be too simple; velocity is often better.
-          //           // Let's rely mainly on velocity direction and magnitude for now.
-        
-          //           if (details.primaryVelocity! < -_minSwipeVelocity) { // Swiped Left (towards next)
-          //             final bool canSkipNext = currentPlaybackState.controls.any((control) => control == MediaControl.skipToNext);
-          //             if (canSkipNext) {
-          //               audioHandler.skipToNext();
-          //             }
-          //           } else if (details.primaryVelocity! > _minSwipeVelocity) { // Swiped Right (towards previous)
-          //             final bool canSkipPrevious = currentPlaybackState.controls.any((control) => control == MediaControl.skipToPrevious);
-          //             if (canSkipPrevious) {
-          //               audioHandler.skipToPrevious();
-          //             }
-          //           }
-          //         }
-          //       }
-          //     : null,
+          // requires either a slow, deilberate swipe or a fast flick to skip forward/back
+          onHorizontalDragUpdate: !isLiveStream && hasMedia
+            ? (details) {
+                dragDistance += details.primaryDelta ?? 0;
+              }
+            : null,
+          
+          onHorizontalDragEnd: !isLiveStream && hasMedia
+            ? (details) {
+                final velocity = details.primaryVelocity ?? 0;
+                final isFastSwipe = velocity.abs() > PlayerWidget._minSwipeVelocity;
+                final isLongSwipe = dragDistance.abs() > PlayerWidget._horizontalSwipeThreshold;
+                // debugPrint("velo: ${velocity}, distance: ${dragDistance}");
+
+                if (isFastSwipe || isLongSwipe) {
+                  if (velocity < 0 || dragDistance < 0) {
+                    audioPlayerHandler.skipToNext();
+                    // debugPrint('\n\n\n[SWIPE] Would skip to next (velocity: $velocity, distance: $dragDistance)\n\n\n');
+                  } else {
+                    // debugPrint('\n\n\n[SWIPE] Would skip to previous (velocity: $velocity, distance: $dragDistance)\n\n\n');
+                    audioPlayerHandler.skipToPrevious();
+                  }
+                }
+                dragDistance = 0;
+              }
+            : null,
+
           child: StreamBuilder<PlaybackState>(
             stream: audioHandler.playbackState,
             builder: (context, playbackStateSnapshot) {
