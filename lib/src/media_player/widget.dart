@@ -84,7 +84,7 @@ class _PlayerWidgetState extends State<PlayerWidget> {
         
         String primaryDisplay = mediaItem?.title ?? "Nothing is loaded...";
         if (mediaItem?.artist?.isNotEmpty == true) {
-          primaryDisplay = "${mediaItem!.artist} - ${mediaItem.title}";
+          primaryDisplay = "${mediaItem!.title} - ${mediaItem.artist}";
         }
 
         String secondaryDisplay = "";
