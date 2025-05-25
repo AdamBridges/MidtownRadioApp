@@ -1,118 +1,160 @@
-import 'package:ctwr_midtown_radio_app/src/error/view.dart';
-import 'package:flutter/foundation.dart'; // For debugPrint
+import 'dart:async';
+import 'dart:math';
+// import 'package:ctwr_midtown_radio_app/src/error/view.dart';
+// import 'package:flutter/foundation.dart'; // For debugPrint
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_service/audio_service.dart';
-import 'package:ctwr_midtown_radio_app/main.dart';
+import 'package:ctwr_midtown_radio_app/main.dart'; // For mainScaffoldKey
 import 'dart:io'; // For SocketException
 import 'package:flutter/services.dart'; // For PlatformException
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class AudioPlayerHandler extends BaseAudioHandler {
   final AudioPlayer _player = AudioPlayer();
 
-  // for On-Demand Media, we queue up next song in the podcast so use can click "next"
   List<MediaItem> _queue = [];
   int _currentIndex = -1;
-  // flag to prevent multiple skips at the same time, causing an error.
   bool _isProcessingSkip = false;
+
+  // variables to recover stream automatically if the connection cuts out
+  // * NOTE: this does NOT work reliably SPECIFICALLY on IOS SIMULATORS
+  // on real devices it works fine. be aware of this if testing
+  final Connectivity _connectivity = Connectivity();
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  bool _shouldAutoRecover = false;
+  int _retryAttempt = 0;
+  DateTime? _lastRetryTime;
+  MediaItem? _currentLiveStreamToRecover;
+
+  // debounce for connectivity changes to avoid rapid triggers
+  Timer? _connectivityDebounceTimer;
 
   Stream<Duration> get positionStream => _player.positionStream;
   final GlobalKey<NavigatorState> navigatorKey;
-  
-  // Here we add a bunch of listeners to the _player to broadcast loading, metadata changes to the rest of the app
-  AudioPlayerHandler({required this.navigatorKey}) {
 
-    // listen to state changes, buffering, etc. (from playbackEventStream)
+  AudioPlayerHandler({required this.navigatorKey}) {
+    // check for changes in internet connectivity -- if internet cuts out and comes back, we attempt reconnect
+    _initConnectivityMonitoring();
+
+    // update processing state
+    // if a livestream reports "completed" then we attepmt to reset and recover the audio since this only happens when something goes wrong.
     _player.playbackEventStream.listen((event) {
       final playing = _player.playing;
       final processingState = _player.processingState;
-      // get current media item for context
-      final currentMediaItem = mediaItem.value;
+      final currentMediaItemFromPlayer = mediaItem.value;
 
+      //debugPrint("AudioPlayerHandler State: $processingState, Playing: $playing, Current MediaItem ID: ${currentMediaItemFromPlayer?.id}, AutoRecover: $_shouldAutoRecover, RetryAttempt: $_retryAttempt");
+
+      // broadcast changed state
       playbackState.add(playbackState.value.copyWith(
-        controls: _getControls(playing, processingState, currentMediaItem),
-        systemActions: _getSystemActions(currentMediaItem),
+        controls: _getControls(playing, processingState, currentMediaItemFromPlayer),
+        systemActions: _getSystemActions(currentMediaItemFromPlayer),
         processingState: _getAudioServiceProcessingState(processingState),
         playing: playing,
         bufferedPosition: event.bufferedPosition,
         speed: _player.speed,
-        queueIndex: _currentIndex, // Ensure queueIndex is updated
+        queueIndex: _currentIndex,
       ));
 
-      // when current podcast is done, it auto advances to next in the show
-      if (processingState == ProcessingState.completed) {
+      // If player becomes ready and is playing, reset recovery state
+      if (processingState == ProcessingState.ready && playing) {
+        if (_shouldAutoRecover) {
+          debugPrint("AudioPlayerHandler: Stream successfully started/recovered and is playing.");
+          _retryAttempt = 0;
+          _shouldAutoRecover = false;
+          _lastRetryTime = null;
+          _currentLiveStreamToRecover = null;
+        }
+      }
 
+      if (processingState == ProcessingState.completed) {
         // sometimes theres an issue caused by the backend 
         // where the audio sees the full duration, ie 55 mins, and sees the player position is like 0:00
-        // and it still makrs it "complete"
+        // and it still marks it "complete"
         // the following is to shield from that and notify users if that happens.
         // we want this snackbar to show when this happens, but not on a normal completion.
-        // from testing, a normal completion can be off by a feew millisecons, and an error will be off by the whole length of the show
-        if (currentMediaItem?.duration != null
-            && (_player.position - currentMediaItem!.duration!).abs() >= Duration(seconds: 5)){
-          
-            Future.microtask(() => stop());
+        // from testing, a normal completion can be off by a few milliseconds, and an error will be off by the whole length of the show
+        if (currentMediaItemFromPlayer?.duration != null &&
+            (_player.position - currentMediaItemFromPlayer!.duration!).abs() >= Duration(seconds: 5)) {
 
-            mainScaffoldKey.currentState?.showSnackBar(
-              SnackBar(
-                content: Text('Sorry, the audio failed to play.'),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: EdgeInsets.all(12),
-                margin: EdgeInsets.all(16),
-              ),
-            );
-        } else{
-          // only skip to next if it's not a live stream and there's a next item
-          if (currentMediaItem?.isLive != true && _currentIndex < _queue.length - 1) {
+          Future.microtask(() => stop());
+          _showErrorSnackbar('Sorry, can\'t play this audio.');
+        } else {
+          if (currentMediaItemFromPlayer?.isLive != true && _currentIndex < _queue.length - 1) {
             Future.microtask(() => skipToNext());
-          } else if (currentMediaItem?.isLive != true) {
-            // stops at the end of an on-demand queue
-            Future.microtask(() => stop());
-          } else{
-            // debugPrint("Error: Live stream should not 'complete'");
+          } else if (currentMediaItemFromPlayer?.isLive != true) {
+            Future.microtask(() => stop()); // End of on-demand queue
+
+          } else if (currentMediaItemFromPlayer?.isLive == true) {
+            debugPrint("AudioPlayerHandler: Live stream reported 'completed' unexpectedly.");
+
+            // this is an abnormal state for a live stream.
+            // stop the player and flag for recovery.
+            if (_currentLiveStreamToRecover == null && mediaItem.value != null) {
+                 _currentLiveStreamToRecover = mediaItem.value;
+            }
+            Future.microtask(() async {
+                await _player.stop();
+                playbackState.add(playbackState.value.copyWith(
+                    processingState: AudioProcessingState.idle,
+                    playing: false));
+            });
+            _shouldAutoRecover = true;
+            _retryAttempt = 0;
+            _lastRetryTime = null;
+            _showInfoSnackbar('Live stream interrupted. Attempting to reconnect...');
+            _handleReconnection();
           }
         }
       }
     }, 
     onError: (Object e, StackTrace stackTrace) async {
-      await stop();
-
-      // update state
-      playbackState.add(playbackState.value.copyWith(
-        processingState: AudioProcessingState.error,
-        playing: false,
-        errorMessage: 'Player error: $e',
-      ));
-
-      // if no internet, then we show a snackbar, as this is more informative and a little bit nicer for the user.
-      // in case of other errors, we navigate to error page, as it is unexpected for other errors to occur. 
-      if ((e is PlatformException && e.code == '-1009') ||
-        e is SocketException ||
-        e.toString().contains('Connection failed')) {
-
-        // show SnackBar for internet issues
-        mainScaffoldKey.currentState?.showSnackBar(
-          SnackBar(
-            content: Text('No internet connection.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      } else {
-        Future.microtask(() => stop());
-        mainScaffoldKey.currentState?.showSnackBar(
-          SnackBar(
-            content: Text('Sorry, this audio can\'t be played at the moment.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      debugPrint("AudioPlayerHandler: onError: $e, StackTrace: $stackTrace");
+      // if error is caused by lack of connectivity, then we also try to recover
+      if (_isNetworkError(e)) {
+        debugPrint("AudioPlayerHandler: Network error detected.");
+        if (mediaItem.value?.isLive == true) { // Only auto-recover live streams
+          _currentLiveStreamToRecover = mediaItem.value; // Store what was trying to play
+          _shouldAutoRecover = true;
+          _retryAttempt = 0;
+          _lastRetryTime = null;
+          _showErrorSnackbar('Connection issue. Attempting to reconnect stream...');
+          // Stop the player to ensure it's in a clean state for reconnect
+          await _player.stop();
+          playbackState.add(playbackState.value.copyWith(
+            processingState: AudioProcessingState.error,
+            playing: false,
+            errorMessage: 'Network error. Trying to reconnect...',
+          ));
+          // _handleReconnection(); // Let connectivity listener or timed retry handle it
+        } else {
+          // For on-demand content with network error
+          await stop();
+          _showErrorSnackbar('Network error. Please check your connection.');
+           playbackState.add(playbackState.value.copyWith(
+              processingState: AudioProcessingState.error, playing: false, errorMessage: 'Network error: $e'));
+        }
+      } else { 
+        // Non-network related error
+        debugPrint("AudioPlayerHandler: Non-network error. Stopping player.");
+        await stop();
+        _showErrorSnackbar('An unexpected audio error occurred.');
+        playbackState.add(playbackState.value.copyWith(
+            processingState: AudioProcessingState.error, playing: false, errorMessage: 'Player error: $e'));
       }
     });
 
-    // broadcasts to the rest of the app what position in time the audio is at
-    // This happens roughly every second so a progress bar can be displayed
+    playbackState.add(playbackState.value.copyWith(
+      controls: [MediaControl.play, MediaControl.stop],
+      processingState: AudioProcessingState.idle,
+      playing: false,
+      updatePosition: Duration.zero,
+      bufferedPosition: Duration.zero,
+      queueIndex: -1,
+    ));
+
+    // update position of stream for rest of the app
     _player.positionStream.listen((position) {
       final currentItem = mediaItem.value;
       final bool isLive = currentItem?.isLive == true;
@@ -214,9 +256,316 @@ class AudioPlayerHandler extends BaseAudioHandler {
       bufferedPosition: Duration.zero,
       queueIndex: -1, // Initial queue index
     ));
+  
   }
 
-  // helper to get state
+  // listens to changes in connectivity to initiate recovery if needed
+  void _initConnectivityMonitoring() {
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen((results) {
+       _connectivityDebounceTimer?.cancel();
+      _connectivityDebounceTimer = Timer(const Duration(milliseconds: 500), () {
+        bool isConnected = !results.contains(ConnectivityResult.none);
+        debugPrint("AudioPlayerHandler: Debounced Connectivity changed. Is connected: $isConnected. Results: $results. ShouldAutoRecover: $_shouldAutoRecover");
+
+        if (isConnected) {
+          // if connecting after being disconnected, reconnect
+          if (_shouldAutoRecover && _currentLiveStreamToRecover != null) {
+            debugPrint("AudioPlayerHandler: Connection restored and auto-recovery is pending. Triggering reconnection.");
+            _handleReconnection();
+          } else if (_shouldAutoRecover && _currentLiveStreamToRecover == null && mediaItem.value?.isLive == true) {
+            // This might happen if error occurred before live stream was stored
+            _currentLiveStreamToRecover = mediaItem.value;
+            debugPrint("AudioPlayerHandler: Connection restored, auto-recovery pending, live item was not stored, trying current mediaItem.");
+            if(_currentLiveStreamToRecover != null) _handleReconnection();
+          }
+        } else {
+          debugPrint("AudioPlayerHandler: Connection lost (ConnectivityResult.none).");
+          // If playing a live stream, player will likely error out. onError will set recovery flags.
+          if (_player.playing && mediaItem.value?.isLive == true) {
+            _currentLiveStreamToRecover = mediaItem.value; // Proactively store
+            // Don't set _shouldAutoRecover here, let onError do it to avoid conflicts
+            _showInfoSnackbar("Connection lost. Player will attempt to reconnect if connection returns.");
+          }
+        }
+      });
+    });
+  }
+
+  // reconnects stream. call when internet is back
+  Future<void> _handleReconnection() async {
+    if (!_shouldAutoRecover || _currentLiveStreamToRecover == null) {
+      debugPrint("_handleReconnection: Aborting. AutoRecover: $_shouldAutoRecover, LiveStreamToRecover: ${_currentLiveStreamToRecover?.id}");
+      return;
+    }
+
+    // If player is somehow already playing the correct stream, abort.
+    if (_player.playing && 
+    _player.processingState == ProcessingState.ready &&
+    _player.audioSource != null && 
+    (_player.audioSource as UriAudioSource).uri.toString().startsWith(_currentLiveStreamToRecover!.id.split("?")[0])) {
+      
+      debugPrint("_handleReconnection: Player is already playing the target stream properly. Aborting recovery.");
+      _shouldAutoRecover = false;
+      _retryAttempt = 0;
+      _lastRetryTime = null;
+      _currentLiveStreamToRecover = null;
+      return;
+    }
+
+    // exponential time delay - at first we retry frequently, and we retry less and less often 
+    // ie after 1, then 2, then 4, 8, 16, 32 seconds, up to a minute maximum
+    final backoffDelay = Duration(seconds: min(60, pow(2, _retryAttempt).toInt()));
+    final now = DateTime.now();
+
+    if (_lastRetryTime != null && now.difference(_lastRetryTime!) < backoffDelay) {
+      debugPrint("_handleReconnection: Throttled by backoff ($backoffDelay). Will try again after ${backoffDelay - now.difference(_lastRetryTime!)}.");
+      // Schedule the next check if not relying on connectivity events alone
+      // This can be tricky; for now, let connectivity events or manual play be the trigger.
+      return;
+    }
+
+    _showInfoSnackbar('Attempting to reconnect stream (attempt ${_retryAttempt + 1})...');
+    debugPrint('AudioPlayerHandler: Attempting audio recovery for live stream "${_currentLiveStreamToRecover!.id}" (attempt $_retryAttempt). Delay: $backoffDelay');
+    
+    _lastRetryTime = now; // Set time before the attempt
+
+    // Update UI to show loading
+    playbackState.add(playbackState.value.copyWith(
+      processingState: AudioProcessingState.loading,
+      playing: false,
+      errorMessage: null, // Clear previous errors
+    ));
+    // Ensure audio_service knows what we're trying to play
+    if (mediaItem.value?.id != _currentLiveStreamToRecover!.id) {
+        mediaItem.add(_currentLiveStreamToRecover); // Update mediaItem stream for audio_service
+    }
+
+
+    try {
+      // Stop the player completely before setting a new source to ensure a clean state.
+      await _player.stop();
+      // Brief delay can sometimes help platforms settle.
+      await Future.delayed(const Duration(milliseconds: 250));
+
+      debugPrint("AudioPlayerHandler: Re-initiating live stream via setMediaItem: ${_currentLiveStreamToRecover!.id}");
+      // Use setMediaItem to ensure all internal states and audio_service are correctly managed.
+      // setMediaItem will call _playItemAtIndex, which handles cache-busting.
+      await setMediaItem(_currentLiveStreamToRecover!, playWhenReady: true);
+      
+      _retryAttempt++; // Increment for the next potential backoff. Reset to 0 on confirmed play by playbackEventStream.
+      // Note: _shouldAutoRecover remains true. It's set to false by playbackEventStream when play is successful.
+      
+    } catch (e) {
+      debugPrint('AudioPlayerHandler: Recovery attempt failed: $e');
+      _retryAttempt++;
+      playbackState.add(playbackState.value.copyWith(
+        processingState: AudioProcessingState.error,
+        errorMessage: "Reconnect failed (attempt $_retryAttempt): $e",
+      ));
+      if (_retryAttempt > 5) { // Max retries for this recovery cycle
+        _showErrorSnackbar("Failed to reconnect after multiple attempts. Please try playing again manually.");
+        debugPrint("AudioPlayerHandler: Max recovery attempts reached. Stopping auto-recovery for this cycle.");
+        _shouldAutoRecover = false;
+        _retryAttempt = 0;
+        _currentLiveStreamToRecover = null; // Give up on this specific item for auto-recovery
+      } else {
+        // The backoff logic at the start of this function will handle the delay for the next attempt,
+        // which might be triggered by another connectivity event or a manual play.
+         _showErrorSnackbar("Reconnect attempt failed. Will try again shortly.");
+      }
+    }
+  }
+
+  // checks that would indicate the error is related to a faulty network connection
+  bool _isNetworkError(Object error) {
+    if (error is PlayerException) {
+        return error.code == -1004 || // Example Android MEDIA_ERROR_IO
+               (error.message?.toLowerCase().contains("source error") ?? false) ||
+               (error.message?.toLowerCase().contains("network") ?? false) ||
+               (error.message?.toLowerCase().contains("connect") ?? false);
+    }
+    return error is SocketException ||
+        error is TimeoutException ||
+        (error is PlatformException && (error.code == 'network_error' || error.code == '-1009' || error.message?.toLowerCase().contains("network connection") == true)) ||
+        error.toString().toLowerCase().contains('connection failed') ||
+        error.toString().toLowerCase().contains('host unreachable') ||
+        error.toString().toLowerCase().contains('failed host lookup');
+  }
+
+  void _showErrorSnackbar(String message) {
+    mainScaffoldKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+  void _showInfoSnackbar(String message) {
+     mainScaffoldKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // set the item to play
+  Future<void> setMediaItem(MediaItem newItem, {bool playWhenReady = false}) async {
+    debugPrint("AudioPlayerHandler: setMediaItem called for '${newItem.id}' (Live: ${newItem.isLive})");
+    if (newItem.isLive == true) {
+      // If this setMediaItem call is not part of a recovery for the *same* stream,
+      // or if there's no recovery in progress, then this is a new live stream selection.
+      if (_currentLiveStreamToRecover?.id != newItem.id || !_shouldAutoRecover) {
+        _currentLiveStreamToRecover = newItem; // Store/update the primary live stream item
+        _shouldAutoRecover = false; // New item selected, reset recovery for any old one
+        _retryAttempt = 0;
+        _lastRetryTime = null;
+        debugPrint("AudioPlayerHandler: New live stream selected or recovery reset. Stored: ${newItem.id}");
+      }
+    } else {
+      // If an on-demand item is selected, clear live stream recovery efforts.
+      if (_currentLiveStreamToRecover != null) {
+        debugPrint("AudioPlayerHandler: On-demand item selected, clearing live stream recovery state.");
+      }
+      _currentLiveStreamToRecover = null;
+      _shouldAutoRecover = false;
+      _retryAttempt = 0;
+      _lastRetryTime = null;
+    }
+
+    _queue = [newItem];
+    _currentIndex = 0;
+    super.queue.add(_queue); // Update audio_service queue
+    await _playItemAtIndex(0, playWhenReady: playWhenReady); // Play the single item
+  }
+  
+  Future<void> _playItemAtIndex(int index, {bool playWhenReady = true}) async {
+    if (index < 0 || index >= _queue.length) {
+      await stop();
+      return;
+    }
+    _currentIndex = index;
+    final newItemToPlay = _queue[index];
+
+    mediaItem.add(newItemToPlay); // Broadcast this item to audio_service
+
+    playbackState.add(playbackState.value.copyWith(
+      updatePosition: Duration.zero,
+      bufferedPosition: Duration.zero,
+      processingState: AudioProcessingState.loading, // Set to loading
+      queueIndex: _currentIndex,
+      playing: false, // Explicitly set playing to false when loading a new item
+      errorMessage: null, // Clear any previous error message
+    ));
+
+    try {
+      // await _player.stop();
+      String urlToPlay = newItemToPlay.id;
+      Map<String, String>? headers;
+
+      if (newItemToPlay.isLive == true) {
+        // Basic cache busting by removing old query params and adding a new timestamp
+        var uri = Uri.parse(newItemToPlay.id);
+        uri = uri.replace(queryParameters: {'t': DateTime.now().millisecondsSinceEpoch.toString()});
+        urlToPlay = uri.toString();
+        debugPrint("AudioPlayerHandler: Playing live stream with cache-busted URL: $urlToPlay");
+        // Some streams might require specific headers, e.g., to prevent caching by intermediaries
+        // headers = {'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache'};
+      }
+      
+      // For live streams, just_audio often handles HLS/DASH specifics well.
+      // Using default AudioLoadConfiguration.
+      await _player.setAudioSource(
+        AudioSource.uri(Uri.parse(urlToPlay), headers: headers),
+        preload: newItemToPlay.isLive != true, // More aggressive preload for on-demand
+        initialPosition: Duration.zero, // Live streams start from current, on-demand from beginning
+      );
+
+      if (playWhenReady) {
+        await _player.play();
+      }
+    } catch (e, stackTrace) {
+      debugPrint("AudioPlayerHandler: Error in _playItemAtIndex for '${newItemToPlay.id}': $e\n$stackTrace");
+      playbackState.add(playbackState.value.copyWith(
+        processingState: AudioProcessingState.error,
+        playing: false,
+        errorMessage: "Error loading: ${newItemToPlay.title}. Details: $e",
+      ));
+      // If this error occurs during a recovery attempt, let onError handler manage recovery flags.
+    }
+  }
+
+  @override
+  Future<void> play() async {
+    // If play is manually called, we assume user intent supersedes auto-recovery for a moment.
+    // If it's a live stream and was pending recovery, this manual play *is* the recovery attempt.
+    if (_shouldAutoRecover && _currentLiveStreamToRecover != null && mediaItem.value?.id == _currentLiveStreamToRecover!.id) {
+        debugPrint("AudioPlayerHandler: Manual play call is effectively a recovery attempt for pending live stream.");
+        // Allow _handleReconnection logic to proceed if it's triggered, or this play itself succeeds.
+        // Resetting _lastRetryTime allows the backoff in _handleReconnection to not overly throttle this.
+        _lastRetryTime = null; 
+        // Call _handleReconnection which will use setMediaItem
+        _handleReconnection(); // This will use the stored _currentLiveStreamToRecover
+        return; // _handleReconnection will take over.
+    }
+
+
+    if (_player.playing) return;
+
+    if (_currentIndex != -1 && _currentIndex < _queue.length) {
+      final currentQueueItem = _queue[_currentIndex];
+      final currentPlayerSourceUri = (_player.audioSource as UriAudioSource?)?.uri.toString().split("?")[0]; // Compare without query params
+      final queueItemUri = currentQueueItem.id.split("?")[0];
+
+      if (_player.audioSource != null && currentPlayerSourceUri == queueItemUri && _player.processingState != ProcessingState.idle) {
+         debugPrint("AudioPlayerHandler: Play - Source matches and not idle, calling _player.play()");
+        await _player.play();
+      } else {
+        debugPrint("AudioPlayerHandler: Play - Source mismatch, null, or idle. Reloading item at index $_currentIndex: ${currentQueueItem.title}");
+        await _playItemAtIndex(_currentIndex, playWhenReady: true);
+      }
+    } else if (_queue.isNotEmpty) {
+      debugPrint("AudioPlayerHandler: Play - No current index, but queue exists. Playing from start (index 0).");
+      await _playItemAtIndex(0, playWhenReady: true);
+    } else if (mediaItem.value != null) {
+      debugPrint("AudioPlayerHandler: Play - No queue, trying to play current mediaItem.value: ${mediaItem.value?.title}");
+      await setMediaItem(mediaItem.value!, playWhenReady: true);
+    } else {
+      debugPrint("AudioPlayerHandler: Play called but no media or queue to play.");
+    }
+  }
+
+
+  @override
+  Future<void> stop() async {
+    debugPrint("AudioPlayerHandler: stop() called. Clearing recovery flags.");
+    await _player.stop();
+    _shouldAutoRecover = false;
+    _retryAttempt = 0;
+    _lastRetryTime = null;
+    // Don't clear _currentLiveStreamToRecover here, as user might hit play again for the same live stream.
+    // Let setMediaItem manage it.
+
+    playbackState.add(playbackState.value.copyWith(
+        processingState: AudioProcessingState.idle,
+        playing: false,
+        controls: _getControls(false, ProcessingState.idle, mediaItem.value),
+        systemActions: _getSystemActions(mediaItem.value)
+    ));
+  }
+
+  @override
+  Future<void> onTaskRemoved() async {
+    await stop();
+    await _player.dispose();
+    _connectivityDebounceTimer?.cancel();
+    await _connectivitySubscription?.cancel();
+    debugPrint("AudioPlayerHandler: Disposed and connectivity monitoring stopped.");
+    return super.onTaskRemoved();
+  }
+  
+// helper to get state
   AudioProcessingState _getAudioServiceProcessingState(ProcessingState processingState) {
     switch (processingState) {
       case ProcessingState.idle: return AudioProcessingState.idle;
@@ -224,7 +573,6 @@ class AudioPlayerHandler extends BaseAudioHandler {
       case ProcessingState.buffering: return AudioProcessingState.buffering;
       case ProcessingState.ready: return AudioProcessingState.ready;
       case ProcessingState.completed: return AudioProcessingState.completed;
-      //default: return AudioProcessingState.error;
     }
   }
 
@@ -239,16 +587,13 @@ class AudioPlayerHandler extends BaseAudioHandler {
       controls.add(MediaControl.pause);
       controls.add(MediaControl.stop);
     } else {
-      // Play is generally available if there's something to play (current item or queue)
       if (mediaItem.value != null || (_queue.isNotEmpty && !isLive)) {
           controls.add(MediaControl.play);
       }
-      // Stop is always available if not loading/buffering
        if (processingState != ProcessingState.idle || mediaItem.value != null) {
             controls.add(MediaControl.stop);
        }
     }
-
     // Add queue navigation controls ONLY for on-demand content with a queue
     if (!isLive && _queue.isNotEmpty) {
       if (_currentIndex > 0) {
@@ -260,11 +605,11 @@ class AudioPlayerHandler extends BaseAudioHandler {
     }
     return controls;
   }
-
   // helper to determine system actions based on media type
+
   Set<MediaAction> _getSystemActions(MediaItem? currentItem) {
     final bool isLive = currentItem?.isLive == true;
-    Set<MediaAction> actions = {MediaAction.stop}; // Stop is almost always available
+    Set<MediaAction> actions = {MediaAction.stop}; 
 
     if (_player.playing || mediaItem.value != null || _queue.isNotEmpty) {
         actions.add(MediaAction.playPause);
@@ -272,9 +617,9 @@ class AudioPlayerHandler extends BaseAudioHandler {
 
 
     if (isLive) {
-      // For live, only play/pause and stop
+      // Live: Play/Pause, Stop
     } else {
-      // On-demand can seek
+      // On-demand: Seek, Skip
       actions.add(MediaAction.seek);
       if (_queue.isNotEmpty) {
         if (_currentIndex > 0) {
@@ -287,94 +632,45 @@ class AudioPlayerHandler extends BaseAudioHandler {
     }
     return actions;
   }
-
   // getters for UI
   bool get isLoading => _player.playerState.processingState == ProcessingState.loading || _player.playerState.processingState == ProcessingState.buffering;
   bool get isPlaying => _player.playing;
 
-  
-  // for on demand items - tries to load and play item at given index in queue
-  Future<void> _playItemAtIndex(int index, {bool playWhenReady = true}) async {
-    if (index < 0 || index >= _queue.length) {
-      // debugPrint("AudioPlayerHandler: _playItemAtIndex - Index out of bounds: $index");
-      await stop(); // Stop if index is invalid
-      return;
-    }
-    _currentIndex = index;
-    final newItemToPlay = _queue[index];
-
-    mediaItem.add(newItemToPlay); 
-
-    // set initial loading state for this item
-    playbackState.add(playbackState.value.copyWith(
-      updatePosition: Duration.zero,      
-      bufferedPosition: Duration.zero, 
-      processingState: AudioProcessingState.loading,
-      queueIndex: _currentIndex,
-      // Controls and system actions will be updated by playbackEventStream and _getControls/_getSystemActions
-    ));
-
-    try {
-      await _player.setAudioSource(
-        AudioSource.uri(Uri.parse(newItemToPlay.id)), 
-        preload: false,
-        initialPosition: Duration.zero, // Always start episodes from the beginning
-      );
-      if (playWhenReady) {
-        _player.play();
-      }
-    } catch (e, stackTrace) {
-      // debugPrint("AudioPlayerHandler: Error setting audio source for queue item at index $index ('${newItemToPlay.title}'): $e\n$stackTrace");
-      playbackState.add(playbackState.value.copyWith(
-        processingState: AudioProcessingState.error,
-        playing: false,
-        errorMessage: "Error loading: ${newItemToPlay.title}",
-      ));
-    }
-  }
 
   @override
   Future<void> updateQueue(List<MediaItem> queue) async {
-    // debugPrint("AudioPlayerHandler: Updating queue with ${queue.length} items.");
-    _queue = List.from(queue); // Ensure it's a new list instance
-    super.queue.add(_queue); // This updates the queue for audio_service UI (e.g., notification)
-    // After updating the queue, re-evaluate controls and system actions.
-    // The current mediaItem might still be valid or might need to be reset if it's not in the new queue.
-    // If _currentIndex is now invalid for the new queue, it should be reset.
+    _queue = List.from(queue); 
+    super.queue.add(_queue); 
     if (_currentIndex >= _queue.length) {
         _currentIndex = _queue.isNotEmpty ? 0 : -1;
     }
     playbackState.add(playbackState.value.copyWith(
         controls: _getControls(_player.playing, _player.processingState, mediaItem.value),
         systemActions: _getSystemActions(mediaItem.value),
-        queueIndex: _currentIndex // Reflect current index
+        queueIndex: _currentIndex 
     ));
   }
 
   @override
   Future<void> skipToQueueItem(int index) async {
     if (mediaItem.value?.isLive == true) return;
-    // debugPrint("AudioPlayerHandler: skipToQueueItem called for index $index. Current queue size: ${_queue.length}");
     if (index < 0 || index >= _queue.length) {
-        // debugPrint("AudioPlayerHandler: skipToQueueItem index $index is out of bounds for queue size ${_queue.length}.");
         return;
     }
-    // Update playback state to show loading for the new item
     playbackState.add(playbackState.value.copyWith(processingState: AudioProcessingState.loading));
     await _playItemAtIndex(index, playWhenReady: true);
   }
 
   @override
   Future<void> skipToNext() async {
+    //ebugPrint("tried to skip: ${_isProcessingSkip}");
     if (mediaItem.value?.isLive == true || _isProcessingSkip) return;
     _isProcessingSkip = true;
 
     if (_currentIndex < _queue.length - 1) {
       await skipToQueueItem(_currentIndex + 1);
-    } else {
-      // ("AudioPlayerHandler: Already at the end of the queue.");
-      // await stop(); 
     }
+    //debugPrint("ran");
     _isProcessingSkip = false;
   }
 
@@ -385,32 +681,14 @@ class AudioPlayerHandler extends BaseAudioHandler {
 
     if (_currentIndex > 0) {
       await skipToQueueItem(_currentIndex - 1);
-    } else {
-      // ("AudioPlayerHandler: Already at the end of the queue.");
-      // await stop(); 
     }
-
     _isProcessingSkip = false;
 
   }
   
-  // This method is for setting single items, like a live stream, or a one-off file.
-  // It's often an override from BaseAudioHandler if you intend to handle addQueueItem or setItem.
-  // For podcast shows, use customSetStream (renamed/repurposed below) or a new dedicated method.
-  Future<void> setMediaItem(MediaItem newItem, {bool playWhenReady = false}) async {
-    // This will treat the newItem as a queue of one.
-    _queue = [newItem];
-    _currentIndex = 0; // Will be set by _playItemAtIndex
-    super.queue.add(_queue); // Update audio_service queue
-    await _playItemAtIndex(0, playWhenReady: playWhenReady); // Play the single item
-  }
-  
-  /// Sets the current playlist to the given list of MediaItems (e.g., all episodes of a podcast show)
-  /// and starts playing the item at initialIndex.
   Future<void> setPodcastShowQueue(List<MediaItem> podcastShowEpisodes, int initialIndex, {bool playWhenReady = true}) async {
     if (podcastShowEpisodes.isEmpty) {
-      // debugPrint("AudioPlayerHandler: setPodcastShowQueue called with empty episode list.");
-      await stop(); // Stop playback and clear current state if queue is empty
+      await stop(); 
       mediaItem.add(null);
       _queue = [];
       super.queue.add(_queue);
@@ -425,51 +703,12 @@ class AudioPlayerHandler extends BaseAudioHandler {
     }
 
     if (initialIndex < 0 || initialIndex >= podcastShowEpisodes.length) {
-      // debugPrint("AudioPlayerHandler: setPodcastShowQueue received invalid initialIndex $initialIndex for queue of ${podcastShowEpisodes.length}. Defaulting to 0.");
       initialIndex = 0; 
     }
 
-    _queue = List.from(podcastShowEpisodes); // Make a mutable copy for internal use
-    super.queue.add(List.from(podcastShowEpisodes)); // Broadcast an immutable copy to audio_service
-
-    // _currentIndex will be set correctly by _playItemAtIndex
-    // mediaItem will also be updated by _playItemAtIndex
+    _queue = List.from(podcastShowEpisodes); 
+    super.queue.add(List.from(podcastShowEpisodes)); 
     await _playItemAtIndex(initialIndex, playWhenReady: playWhenReady);
-  }
-
-  @override
-  Future<void> play() async {
-    if (_player.playing) return;
-
-    // debugPrint("AudioPlayerHandler: Play method. CurrentIndex: $_currentIndex, Queue Length: ${_queue.length}, CurrentMediaItem: ${mediaItem.value?.title}");
-
-    if (_currentIndex != -1 && _currentIndex < _queue.length) {
-      // If there's a valid current item in the queue that matches the player's perception or needs loading
-      final currentQueueItem = _queue[_currentIndex];
-      final currentPlayerSourceUri = (_player.audioSource as UriAudioSource?)?.uri.toString();
-
-      if (_player.audioSource != null && currentPlayerSourceUri == currentQueueItem.id) {
-        // Source is loaded and matches, just play
-        await _player.play();
-      } else {
-        // Source is not loaded, or doesn't match (e.g., after stop() or queue change), reload and play current item
-        // debugPrint("AudioPlayerHandler: Play - Source mismatch or null. Reloading item at index $_currentIndex: ${currentQueueItem.title}");
-        await _playItemAtIndex(_currentIndex, playWhenReady: true);
-      }
-    } else if (_queue.isNotEmpty) {
-      // If there's no valid _currentIndex BUT there is a queue (e.g., after stop() or initially)
-      // Default to playing the first item in the queue.
-      // debugPrint("AudioPlayerHandler: Play - No current index, but queue exists. Playing from start of queue (index 0).");
-      await _playItemAtIndex(0, playWhenReady: true);
-    } else if (mediaItem.value != null) {
-        // No queue, but a single mediaItem might have been set previously (e.g. a live stream via setMediaItem)
-        // Attempt to play this single item. setMediaItem will create a temporary queue for it.
-        // debugPrint("AudioPlayerHandler: Play - No queue, trying to play current mediaItem.value directly: ${mediaItem.value?.title}");
-        await setMediaItem(mediaItem.value!, playWhenReady: true); // This will queue and play it as a single item
-    }
-     else {
-      // debugPrint("AudioPlayerHandler: Play called but no media or queue to play effectively.");
-    }
   }
 
   @override
@@ -478,41 +717,12 @@ class AudioPlayerHandler extends BaseAudioHandler {
   }
 
   @override
-  Future<void> stop() async {
-    await _player.stop();
-
-    // For on-demand, set current index to -1 to indicate no specific item is "current"
-    // but the queue itself remains for potential restart.
-    
-    // Update playback state to idle, but keep media item and queue if appropriate
-    playbackState.add(playbackState.value.copyWith(
-        processingState: AudioProcessingState.idle,
-        playing: false,
-        // updatePosition: Duration.zero,
-        // queueIndex: _currentIndex,
-        controls: _getControls(false, ProcessingState.idle, mediaItem.value),
-        systemActions: _getSystemActions(mediaItem.value)
-    ));
-  }
-
-  @override
   Future<void> seek(Duration position) async {
     if (mediaItem.value?.isLive == true) return;
     try {
       await _player.seek(position);
     } catch (e) {
-      // debugPrint("AudioPlayerHandler: Error during seek: $e");
+      debugPrint("AudioPlayerHandler: Error during seek: $e");
     }
-  }
-
-  @override
-  Future<void> onTaskRemoved() async {
-    await stop();
-    await _player.dispose();
-    return super.onTaskRemoved();
-  }
-
-  Future<void> customDispose() async {
-    await _player.dispose();
   }
 }

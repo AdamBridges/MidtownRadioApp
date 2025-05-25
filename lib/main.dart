@@ -40,7 +40,7 @@ void main() async {
       androidNotificationChannelName: 'Audio playback',
       androidNotificationOngoing: true,
       androidStopForegroundOnPause: true,
-      androidNotificationIcon: 'mipmap/launcher_icon'
+      androidNotificationIcon: 'mipmap/launcher_icon',
     ),
     
   );

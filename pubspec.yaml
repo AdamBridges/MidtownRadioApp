@@ -48,6 +48,7 @@ dependencies:
   readmore: ^3.0.0
   flutter_native_splash: ^2.4.6
   shared_preferences: ^2.5.3
+  connectivity_plus: ^6.1.4
 
 dev_dependencies:
   flutter_test:
