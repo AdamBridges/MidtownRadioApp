@@ -273,7 +273,8 @@ One last thing to consider -- since we are fetching the RSS URLS and then the fe
 To mitigate this, the getStreams could (and maybe should) run as soon as the app opens, and then cache the URL's
 */
 class _Streams {
-  static const String feedsUrl = 'https://raw.githubusercontent.com/CivicTechWR/MidtownRadioApp/master/assets/tempfeeds.txt';
+ // static const String feedsUrl = 'https://raw.githubusercontent.com/CivicTechWR/MidtownRadioApp/master/assets/tempfeeds.txt';
+  static const String feedsUrl = 'https://raw.githubusercontent.com/david-harmes/Midtown-Radio-RSS/blob/main/feeds.txt';
   
   static const List<String> _fallback = [
     'https://feeds.transistor.fm/midtown-radio',
