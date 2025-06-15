@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:ctwr_midtown_radio_app/src/localization/app_localizations.dart';
 import 'package:ctwr_midtown_radio_app/src/media_player/widget.dart';
 import 'package:ctwr_midtown_radio_app/src/settings/view.dart';
 import 'package:ctwr_midtown_radio_app/src/error/view.dart';

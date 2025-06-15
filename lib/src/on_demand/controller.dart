@@ -1,9 +1,8 @@
 import 'package:http/http.dart' as http;
-import 'package:dart_rss/dart_rss.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter/foundation.dart'; // For debugPrint
 import 'dart:async';
 import 'package:ctwr_midtown_radio_app/src/media_player/format_duration.dart';
+import 'package:rss_dart/domain/rss_feed.dart';
 
 // utility to strip HTML tags -- this could use a second look over
 String _stripHtmlIfNeeded(String? htmlText) {
@@ -185,7 +184,7 @@ class OnDemand {
           final String showImageUrl = feed.image?.url ??
               feed.itunes?.image?.href ??
               'assets/images/logo_mic_black_on_white.png';
-          final String? channelPubDateString = feed.pubDate ?? feed.lastBuildDate;
+          final String? channelPubDateString = feed.lastBuildDate;
           final DateTime? channelSortablePubDate = _parseDate(channelPubDateString);
 
           List<Episode> currentShowEpisodes = [];
