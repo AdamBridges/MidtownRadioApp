@@ -19,20 +19,18 @@ final GlobalKey<ScaffoldMessengerState> mainScaffoldKey = GlobalKey();
 
 void main() async {
   // Ensure that plugin services are initialized
-  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  final WidgetsBinding widgetsBinding = WidgetsFlutterBinding
+      .ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   final settingsController = SettingsController(SettingsService());
   await settingsController.loadSettings();  
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey();
 
-
-
-
   OnDemand.primeCache(); 
 
+  // TODO Investigate how iOS is handling media notification; otherwise, look into alternative:
   audioPlayerHandler = AudioPlayerHandler(navigatorKey: navigatorKey);
-  
   audioHandler = await AudioService.init(
     builder: () => audioPlayerHandler,
     config: AudioServiceConfig(

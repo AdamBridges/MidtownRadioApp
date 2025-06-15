@@ -79,7 +79,6 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
-  # To add custom native code (platform-specific implementation) to your
   generate: true
 
   # only including required assets for smaller build, but I will leave the files there for dev reference

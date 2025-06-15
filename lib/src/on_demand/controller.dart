@@ -167,7 +167,8 @@ class OnDemand {
   Future<void> _fetchShows() async {
     final List<String> streamUrls = await _Streams.getStreams();
     // Clear shows for the current instance being fetched
-    // This method will be called on a new OnDemand._() instance each time a full fetch is needed
+    // This method will be called on a new OnDemand._() instance each time a
+    // full fetch is needed
     List<PodcastShow> fetchedShows = []; // Use a temporary list
 
     for (var url in streamUrls) {
@@ -176,9 +177,10 @@ class OnDemand {
         final response = await http.get(Uri.parse(url));
         if (response.statusCode == 200) {
           final feed = RssFeed.parse(response.body);
-
           final String showTitle = feed.title ?? 'Untitled Show';
-          final String showDescription = _stripHtmlIfNeeded(feed.description ?? feed.itunes?.summary);
+          final String showDescription = _stripHtmlIfNeeded(
+              feed.description ?? feed.itunes?.summary
+          );
           // show picture falls back to MTR logo
           final String showImageUrl = feed.image?.url ??
               feed.itunes?.image?.href ??

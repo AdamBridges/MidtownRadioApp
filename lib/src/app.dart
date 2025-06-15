@@ -1,5 +1,4 @@
 import 'package:ctwr_midtown_radio_app/main.dart';
-// import 'package:ctwr_midtown_radio_app/src/on_demand/episode_list.dart';
 import 'package:ctwr_midtown_radio_app/src/settings/controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -64,11 +63,9 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
         builder: (BuildContext context, Widget? child) {
           return MaterialApp(
             scaffoldMessengerKey: mainScaffoldKey,
-            // showSemanticsDebugger: true,
-
+            showSemanticsDebugger: false,
             debugShowCheckedModeBanner: false,
             navigatorKey: widget.navigatorKey,
-
             builder: (context, child) => Semantics(
               sortKey: const OrdinalSortKey(0),
               explicitChildNodes: true,
@@ -115,32 +112,31 @@ class MidtownRadioState extends State<MidtownRadioStateful> {
                 ),
               ),
             ),
-
             initialRoute: HomePage.routeName,
-
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-
-          supportedLocales: const [
-            Locale('en', ''),
-            Locale('fr', ''),
-          ],
-
-          onGenerateTitle: (BuildContext context) =>  AppLocalizations.of(context)!.appTitle,
-
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [
+              Locale('en', ''),
+              Locale('fr', ''),
+            ],
+            onGenerateTitle: (BuildContext context) =>  AppLocalizations
+              .of(context)!.appTitle,
           theme: ThemeData(),
           darkTheme: ThemeData.dark(),
           themeMode: widget.settingsController.themeMode,
-
           onGenerateRoute: (RouteSettings routeSettings) {
             try {
               switch (routeSettings.name) {
                 case HomePage.routeName:
-                  return MaterialPageRoute(builder: (_) => HomePage(controller: widget.settingsController));
+                  return MaterialPageRoute(
+                      builder: (_) => HomePage(
+                          controller: widget.settingsController
+                      )
+                  );
                 case ListenLivePage.routeName:
                   return MaterialPageRoute(builder: (_) => const ListenLivePage());
                 case OnDemandPage.routeName:
